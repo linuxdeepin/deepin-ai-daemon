@@ -1,0 +1,8 @@
+[Desktop Entry]
+Comment=DEEPIN AI DAEMON
+Exec=systemctl --user enable deepin-ai-daemon.service --now --runtime
+Name=Deepin AI Daemon
+NoDisplay=true
+OnlyShowIn=Deepin;DDE
+Type=Application
+X-Deepin-Vendor=user-custom

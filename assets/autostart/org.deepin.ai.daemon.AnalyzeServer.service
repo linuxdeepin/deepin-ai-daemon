@@ -1,0 +1,3 @@
+[D-BUS Service]
+Name=org.deepin.ai.daemon.AnalyzeServer
+Exec=/usr/bin/deepin-ai-daemon
