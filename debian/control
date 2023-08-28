@@ -1,0 +1,32 @@
+Source: deepin-ai-daemon
+Section: utils
+Priority: optional
+Maintainer: Deepin Packages Builder <packages@deepin.com>
+Build-Depends: debhelper (>= 9),
+ pkg-config,
+ qt5-qmake,
+ qtbase5-dev,
+ libdtkwidget-dev,
+ libdtkcore-dev,
+ libdtkgui-dev,
+ libdtkocr-dev,
+ libdtkcore5-bin, 
+ cmake,
+ libtag1-dev,
+ liblucene++-dev,
+ libnl-genl-3-dev,
+ libicu-dev,
+ libboost-filesystem-dev
+Standards-Version: 3.9.8
+Homepage: http://www.deepin.org/
+
+Package: deepin-ai-daemon
+Architecture: any
+Depends: 
+ ${shlibs:Depends},
+ ${misc:Depends},
+ deepin-anything-server
+Recommends:
+ libimageeditor (>=1.0.19)
+Description: Intelligent search for dde-grand-search
+ Intelligent search for dde-grand-search

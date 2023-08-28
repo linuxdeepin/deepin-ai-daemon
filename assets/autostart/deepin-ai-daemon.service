@@ -1,0 +1,10 @@
+[Unit]
+Description=DEEPIN AI DAEMON
+
+[Service]
+Type=dbus
+BusName=org.deepin.ai.daemon
+ExecStart=/usr/bin/deepin-ai-daemon
+
+[Install]
+WantedBy=graphical-session.target
