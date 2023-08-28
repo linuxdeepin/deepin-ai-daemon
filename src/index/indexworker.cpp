@@ -161,10 +161,10 @@ bool IndexWorkerPrivate::checkUpdate(const IndexReaderPtr &reader, const QString
         } else {
             DocumentPtr doc = searcher->doc(topDocs->scoreDocs[0]->doc);
             QFileInfo info(file);
-            QString lastReadTime = info.lastRead().toString("yyyyMMddHHmmss");
-            String storeTime = doc->get(L"lastRead");
+            QString lastModified = info.lastModified().toString("yyyyMMddHHmmss");
+            String storeTime = doc->get(L"lastModified");
 
-            if (lastReadTime.toStdWString() != storeTime) {
+            if (lastModified.toStdWString() != storeTime) {
                 type = UpdateIndex;
                 return true;
             }
