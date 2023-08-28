@@ -1,0 +1,46 @@
+Format: https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
+Upstream-Name: deepin-ai-daemon
+Upstream-Contact: UnionTech Software Technology Co., Ltd.<>
+Source: https://github.com/linuxdeepin/deepin-ai-daemon
+
+# ci
+Files: .gitlab-ci.yml .obs/workflows.yml
+Copyright: None
+License: CC0-1.0
+
+# github
+Files: .github/*
+Copyright: None
+License: CC0-1.0
+
+# ignore files
+Files: .gitignore
+Copyright: None
+License: CC0-1.0
+
+# debian
+Files: debian/*
+Copyright: None
+License: CC0-1.0
+
+# Project files
+Files: *CMakeLists.txt
+Copyright: None
+License: CC0-1.0
+
+# README
+Files: README.md README.zh_CN.md
+Copyright: UnionTech Software Technology Co., Ltd.
+License: CC-BY-4.0
+
+# assets
+Files: assets/*
+Copyright: UnionTech Software Technology Co., Ltd.
+License: GPL-3.0-or-later
+
+# analyzer
+Files: 3rdparty/analyzer/*
+Copyright: 2009-2014 Alan Wright
+License: LGPL-3.0-or-later
+
+
