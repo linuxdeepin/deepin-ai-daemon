@@ -58,8 +58,7 @@ $ sudo cmake --build build --target install
 
 ## 文档
 
-- [开发文档](https://linuxdeepin.github.io/dde-file-manager/)
-- [User Documentation](https://wiki.deepin.org/wiki/Deepin_File_Manager) | [用户文档](https://wiki.deepin.org/index.php?title=%E6%B7%B1%E5%BA%A6%E6%96%87%E4%BB%B6%E7%AE%A1%E7%90%86%E5%99%A8)
+- 待补充
 
 ## 帮助
 
