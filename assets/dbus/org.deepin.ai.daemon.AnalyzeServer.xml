@@ -3,7 +3,7 @@
   <interface name="org.deepin.ai.daemon.AnalyzeServer">
     <method name="Analyze">
       <arg type="s" direction="out"/>
-      <arg name="context" type="s" direction="in"/>
+      <arg name="content" type="s" direction="in"/>
     </method>
   </interface>
 </node>

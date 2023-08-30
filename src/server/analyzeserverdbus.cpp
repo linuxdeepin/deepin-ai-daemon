@@ -5,34 +5,76 @@
 #include "analyzeserverdbus.h"
 
 #include <QProcess>
-#include <QDir>
 #include <QDebug>
+#include <QDBusConnection>
 
-AnalyzeServerDBus::AnalyzeServerDBus(QObject *parent)
+AnalyzeWorker::AnalyzeWorker(QObject *parent)
     : QObject(parent)
 {
+    process.setProgram("deepin-ai-models");
 }
 
-QString AnalyzeServerDBus::Analyze(const QString &context)
+void AnalyzeWorker::stop()
+{
+    if (process.state() == QProcess::Running)
+        process.kill();
+}
+
+void AnalyzeWorker::onTaskAdded(const QString &content, QDBusMessage reply)
 {
     QString result;
-    if (context.isEmpty())
-        return result;
-
-    QProcess process;
-    process.start("AImodule", { context });
+    process.setArguments({ content });
+    process.start();
     if (!process.waitForFinished()) {
-        qWarning() << "AImodule execute failed: "
+        qWarning() << "deepin-ai-models execute failed: "
                    << process.errorString();
-        return result;
+        goto end;
     }
 
     if (process.exitCode() != 0) {
         qWarning() << process.readAllStandardError();
-        return result;
+        goto end;
     }
 
     result = process.readAllStandardOutput();
     qDebug() << result;
-    return result;
+end:
+    reply << result;
+    QDBusConnection::sessionBus().send(reply);
+}
+
+AnalyzeServerDBus::AnalyzeServerDBus(QObject *parent)
+    : QObject(parent)
+{
+    init();
+}
+
+AnalyzeServerDBus::~AnalyzeServerDBus()
+{
+    worker->stop();
+    workerThread.quit();
+    workerThread.wait();
+}
+
+QString AnalyzeServerDBus::Analyze(const QString &content)
+{
+    if (content.isEmpty())
+        return "";
+
+    auto msg = message();
+    msg.setDelayedReply(true);
+    auto reply = msg.createReply();
+
+    worker->stop();
+    Q_EMIT addTask(content, reply, {});
+    return "";
+}
+
+void AnalyzeServerDBus::init()
+{
+    worker = new AnalyzeWorker(this);
+    worker->moveToThread(&workerThread);
+
+    connect(this, &AnalyzeServerDBus::addTask, worker, &AnalyzeWorker::onTaskAdded);
+    workerThread.start();
 }
