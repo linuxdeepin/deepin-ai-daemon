@@ -28,8 +28,8 @@ QList<AbstractPropertyParser::Property> AudioPropertyParser::properties(const QS
 
     AudioMetaData data;
     if (openAudioFile(file, data)) {
-        propertyList.append({ "Album", data.album, false });
-        propertyList.append({ "Author", data.artist, false });
+        propertyList.append({ "Album", data.album, true });
+        propertyList.append({ "Author", data.artist, true });
         propertyList.append({ "duration", data.duration, false });
     }
 
