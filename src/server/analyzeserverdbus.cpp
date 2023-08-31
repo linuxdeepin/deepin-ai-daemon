@@ -54,6 +54,9 @@ AnalyzeServerDBus::~AnalyzeServerDBus()
     worker->stop();
     workerThread.quit();
     workerThread.wait();
+
+    if (worker)
+        delete worker;
 }
 
 QString AnalyzeServerDBus::Analyze(const QString &content)
@@ -72,7 +75,7 @@ QString AnalyzeServerDBus::Analyze(const QString &content)
 
 void AnalyzeServerDBus::init()
 {
-    worker = new AnalyzeWorker(this);
+    worker = new AnalyzeWorker();
     worker->moveToThread(&workerThread);
 
     connect(this, &AnalyzeServerDBus::addTask, worker, &AnalyzeWorker::onTaskAdded);
