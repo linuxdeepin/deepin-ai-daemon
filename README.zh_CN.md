@@ -74,9 +74,7 @@ $ sudo cmake --build build --target install
 我们鼓励您报告问题并做出更改
 
 - [Contribution guide for developers](https://github.com/linuxdeepin/developer-center/wiki/Contribution-Guidelines-for-Developers-en) (English)
-
 - [开发者代码贡献指南](https://github.com/linuxdeepin/developer-center/wiki/Contribution-Guidelines-for-Developers) (中文)
-- [在Transife上翻译您的语言](https://www.transifex.com/linuxdeepin/deepin-file-manager/)
 
 ## 开源许可证
 
