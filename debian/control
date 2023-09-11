@@ -25,7 +25,8 @@ Architecture: any
 Depends: 
  ${shlibs:Depends},
  ${misc:Depends},
- deepin-anything-server
+ deepin-anything-server,
+ deepin-ai-models
 Recommends:
  libimageeditor (>=1.0.19)
 Description: AI search application server for dde-grand-search
