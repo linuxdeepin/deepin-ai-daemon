@@ -4,14 +4,14 @@
 
 #include "imagepropertyparser.h"
 
-#include <DOcr>
-
 #include <QImage>
 
-DOCR_USE_NAMESPACE
 ImagePropertyParser::ImagePropertyParser(QObject *parent)
     : AbstractPropertyParser(parent)
 {
+    ocr.loadDefaultPlugin();
+    ocr.setUseHardware({ { Dtk::Ocr::GPU_Vulkan, 0 } });
+    ocr.setLanguage("zh-Hans_en");
 }
 
 QList<AbstractPropertyParser::Property> ImagePropertyParser::properties(const QString &file)
@@ -23,10 +23,6 @@ QList<AbstractPropertyParser::Property> ImagePropertyParser::properties(const QS
     QImage image(file);
     propertyList.append({ "resolution", QString("%1*%2").arg(image.width()).arg(image.height()), false });
 
-    DOcr ocr;
-    ocr.loadDefaultPlugin();
-    ocr.setUseHardware({ { Dtk::Ocr::GPU_Vulkan, 0 } });
-    ocr.setLanguage("zh-Hans_en");
     ocr.setImageFile(file);
     if (ocr.analyze()) {
         const auto &result = ocr.simpleResult();
