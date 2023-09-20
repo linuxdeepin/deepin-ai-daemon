@@ -73,3 +73,7 @@ install(FILES ${CMAKE_SOURCE_DIR}/assets/autostart/deepin-ai-daemon.service
 # xdg-autostart
 install(FILES ${CMAKE_SOURCE_DIR}/assets/autostart/deepin-ai-daemon.desktop
     DESTINATION ${CMAKE_INSTALL_SYSCONFDIR}/xdg/autostart)
+
+# install Manual App icon
+install(FILES ${CMAKE_SOURCE_DIR}/assets/icon/deepin-ai-daemon.svg
+    DESTINATION ${CMAKE_INSTALL_PREFIX}/share/icons/hicolor/scalable/apps)
