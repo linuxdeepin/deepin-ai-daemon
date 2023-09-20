@@ -28,12 +28,11 @@ QList<AbstractPropertyParser::Property> ImagePropertyParser::properties(const QS
     // 高分辨率图片会导致ocr内存暴涨
     if (image.width() > kImageSizeLimit || image.height() > kImageSizeLimit)
         image = image.width() > image.height()
-                ? image.scaledToWidth(kImageSizeLimit)
-                : image.scaledToHeight(kImageSizeLimit);
+                ? image.scaledToWidth(kImageSizeLimit, Qt::SmoothTransformation)
+                : image.scaledToHeight(kImageSizeLimit, Qt::SmoothTransformation);
 
     DOcr ocr;
     ocr.loadDefaultPlugin();
-    ocr.setUseHardware({ { Dtk::Ocr::GPU_Vulkan, 0 } });
     ocr.setLanguage("zh-Hans_en");
     ocr.setImage(image);
     if (ocr.analyze()) {
