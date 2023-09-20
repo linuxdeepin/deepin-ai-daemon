@@ -54,7 +54,7 @@ int main(int argc, char *argv[])
     analyzeServer.start();
 
     FileMonitor monitor;
-    monitor.start();
+    monitor.start(QThread::InheritPriority, 60);
 
     return app.exec();
 }
