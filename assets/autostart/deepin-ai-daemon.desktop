@@ -5,4 +5,5 @@ Name=Deepin AI Daemon
 NoDisplay=true
 OnlyShowIn=Deepin;DDE
 Type=Application
+Icon=/usr/share/icons/hicolor/scalable/apps/deepin-ai-daemon.svg
 X-Deepin-Vendor=user-custom
