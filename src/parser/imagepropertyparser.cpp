@@ -8,6 +8,8 @@
 
 #include <QImage>
 
+static constexpr int kImageSizeLimit = 1024;
+
 DOCR_USE_NAMESPACE
 ImagePropertyParser::ImagePropertyParser(QObject *parent)
     : AbstractPropertyParser(parent)
@@ -23,11 +25,17 @@ QList<AbstractPropertyParser::Property> ImagePropertyParser::properties(const QS
     QImage image(file);
     propertyList.append({ "resolution", QString("%1*%2").arg(image.width()).arg(image.height()), false });
 
+    // 高分辨率图片会导致ocr内存暴涨
+    if (image.width() > kImageSizeLimit || image.height() > kImageSizeLimit)
+        image = image.width() > image.height()
+                ? image.scaledToWidth(kImageSizeLimit)
+                : image.scaledToHeight(kImageSizeLimit);
+
     DOcr ocr;
     ocr.loadDefaultPlugin();
     ocr.setUseHardware({ { Dtk::Ocr::GPU_Vulkan, 0 } });
     ocr.setLanguage("zh-Hans_en");
-    ocr.setImageFile(file);
+    ocr.setImage(image);
     if (ocr.analyze()) {
         const auto &result = ocr.simpleResult();
         if (!result.isEmpty())
