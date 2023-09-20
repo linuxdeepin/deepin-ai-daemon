@@ -16,7 +16,7 @@ public:
     virtual ~FileMonitor() override;
 
 public Q_SLOTS:
-    void start(Priority = InheritPriority);
+    void start(Priority = InheritPriority, int delayTime = 0);
 
 protected:
     void run() override;

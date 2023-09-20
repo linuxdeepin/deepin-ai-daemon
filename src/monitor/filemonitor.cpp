@@ -9,6 +9,7 @@
 
 #include <QDebug>
 #include <QStandardPaths>
+#include <QTimer>
 
 #include <netlink/genl/genl.h>
 #include <netlink/genl/ctrl.h>
@@ -42,25 +43,27 @@ FileMonitor::~FileMonitor()
     qInfo() << "The file monitor has quit";
 }
 
-void FileMonitor::start(Priority p)
+void FileMonitor::start(Priority p, int delayTime)
 {
-    if (!isInited) {
-        qWarning() << "FileMonitor is not init success";
-        return;
-    }
+    QTimer::singleShot(delayTime * 1000, this, [&] {
+        if (!isInited) {
+            qWarning() << "FileMonitor is not init success";
+            return;
+        }
 
-    emit indexManager->createAllIndex();
+        emit indexManager->createAllIndex();
 
-    if (!prepNlSock())
-        return;
+        if (!prepNlSock())
+            return;
 
-    initPolicy();
+        initPolicy();
 
-    // set timeout
-    struct timeval tv = { 0, 500 * 1000 };   // 500ms
-    setsockopt(nl_socket_get_fd(nlsock), SOL_SOCKET, SO_RCVTIMEO, static_cast<void *>(&tv), sizeof (tv));
+        // set timeout
+        struct timeval tv = { 0, 500 * 1000 };   // 500ms
+        setsockopt(nl_socket_get_fd(nlsock), SOL_SOCKET, SO_RCVTIMEO, static_cast<void *>(&tv), sizeof(tv));
 
-    QThread::start(p);
+        QThread::start(p);
+    });
 }
 
 void FileMonitor::run()
@@ -221,9 +224,9 @@ int FileMonitor::handleMsgFromGenl(nl_msg *msg, void *arg)
     // TODO: file attribute change
     switch (act) {
     case ACT_NEW_FILE:
-//    case ACT_NEW_SYMLINK:
-//    case ACT_NEW_LINK:
-//    case ACT_NEW_FOLDER:
+        //    case ACT_NEW_SYMLINK:
+        //    case ACT_NEW_LINK:
+        //    case ACT_NEW_FOLDER:
     case ACT_RENAME_TO_FILE:
     case ACT_RENAME_TO_FOLDER:
         Q_EMIT monitor->indexManager->fileCreated(changedFile);
