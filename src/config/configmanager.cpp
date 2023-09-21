@@ -45,6 +45,7 @@ void ConfigManagerPrivate::setDefaultConfig()
     QStringList blacklist {
         QStandardPaths::writableLocation(QStandardPaths::DocumentsLocation) + "/WXWork",
         QStandardPaths::writableLocation(QStandardPaths::DocumentsLocation) + "/WeChat Files",
+        QStandardPaths::writableLocation(QStandardPaths::DocumentsLocation) + "/Tencent Files"
     };
 
     QSettings set(configPath, QSettings::IniFormat);
