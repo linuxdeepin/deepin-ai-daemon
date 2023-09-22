@@ -21,7 +21,6 @@
 #include <QDir>
 
 #include <dirent.h>
-#include <malloc.h>
 
 using namespace Lucene;
 
@@ -319,7 +318,6 @@ void IndexWorker::onCreateAllIndex()
     }
 
     onFileCreated(QStandardPaths::writableLocation(QStandardPaths::HomeLocation));
-    malloc_trim(0);
 }
 
 void IndexWorker::onUpdateAllIndex()
@@ -340,6 +338,4 @@ void IndexWorker::onUpdateAllIndex()
     } catch (...) {
         qWarning() << "The file index updated failed!";
     }
-
-    malloc_trim(0);
 }

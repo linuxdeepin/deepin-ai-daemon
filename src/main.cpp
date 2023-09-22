@@ -5,6 +5,7 @@
 #include "monitor/filemonitor.h"
 #include "server/analyzeserver.h"
 #include "config/configmanager.h"
+#include "utils/resourcemanager.h"
 
 #include <DApplication>
 #include <DLog>
@@ -55,6 +56,8 @@ int main(int argc, char *argv[])
 
     FileMonitor monitor;
     monitor.start(QThread::InheritPriority, 60);
+
+    ResourceManager::instance()->setAutoReleaseMemory(true);
 
     return app.exec();
 }
