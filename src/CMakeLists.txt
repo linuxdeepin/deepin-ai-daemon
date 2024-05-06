@@ -3,18 +3,22 @@ cmake_minimum_required(VERSION 3.5)
 project(deepin-ai-daemon)
 
 set(ANALYZESERVER_XML ${DBUS_XML_DIR}/org.deepin.ai.daemon.AnalyzeServer.xml)
+set(VectorIndex_XML ${DBUS_XML_DIR}/org.deepin.ai.daemon.VectorIndex.xml)
+set(faiss_FOUND 1)
 
 pkg_search_module(NlGenl REQUIRED libnl-genl-3.0 IMPORTED_TARGET)
 pkg_check_modules(Lucene REQUIRED IMPORTED_TARGET liblucene++ liblucene++-contrib)
 pkg_check_modules(Taglib REQUIRED IMPORTED_TARGET taglib)
 pkg_check_modules(ICU REQUIRED IMPORTED_TARGET icu-i18n)
+pkg_check_modules(Docparser REQUIRED IMPORTED_TARGET docparser)
 
 find_package(DtkWidget REQUIRED)
 find_package(DtkGui REQUIRED)
 find_package(DtkCMake REQUIRED)
-find_package(Qt5 COMPONENTS Widgets DBus REQUIRED)
+find_package(Qt5 COMPONENTS Widgets DBus Sql REQUIRED)
 find_package(Boost REQUIRED COMPONENTS system)
 find_package(dtkocr REQUIRED)
+find_package(faiss REQUIRED)
 
 FILE(GLOB_RECURSE SRC_FILES
     "${CMAKE_CURRENT_SOURCE_DIR}/*.h"
@@ -29,6 +33,9 @@ FILE(GLOB_RECURSE ANALYZER_SRC
 qt5_add_dbus_adaptor(SRC_FILES ${ANALYZESERVER_XML}
     server/analyzeserverdbus.h AnalyzeServerDBus)
 
+qt5_add_dbus_adaptor(SRC_FILES ${VectorIndex_XML}
+    server/vectorindexdbus.h VectorIndexDBus)
+
 add_executable(${PROJECT_NAME} ${ANALYZER_SRC} ${SRC_FILES})
 
 target_include_directories(${PROJECT_NAME}
@@ -38,6 +45,7 @@ target_include_directories(${PROJECT_NAME}
         ${DtkWidget_INCLUDE_DIRS}
         ${DtkGUI_INCLUDE_DIRS}
         ${dtkocr_INCLUDE_DIRS}
+        ${faiss_INCLUDE_DIRS}
         ${CMAKE_SOURCE_DIR}/3rdparty
 )
 
@@ -46,6 +54,7 @@ target_link_libraries(${PROJECT_NAME}
     Qt5::Core
     Qt5::Gui
     Qt5::Widgets
+    Qt5::Sql
     ${Boost_LIBRARIES}
     ${DtkWidget_LIBRARIES}
     ${DtkGUI_LIBRARIES}
@@ -54,7 +63,9 @@ target_link_libraries(${PROJECT_NAME}
     PkgConfig::Lucene
     PkgConfig::Taglib
     PkgConfig::ICU
+    PkgConfig::Docparser
     pthread
+    faiss
 )
 
 # bin
@@ -64,6 +75,7 @@ install(TARGETS ${PROJECT_NAME} DESTINATION bin)
 install(FILES
     ${CMAKE_SOURCE_DIR}/assets/autostart/org.deepin.ai.daemon.service
     ${CMAKE_SOURCE_DIR}/assets/autostart/org.deepin.ai.daemon.AnalyzeServer.service
+    ${CMAKE_SOURCE_DIR}/assets/autostart/org.deepin.ai.daemon.VectorIndex.service
     DESTINATION ${CMAKE_INSTALL_PREFIX}/share/dbus-1/services)
 
 # systemd service

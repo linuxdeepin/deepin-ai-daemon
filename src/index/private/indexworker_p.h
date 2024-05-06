@@ -13,6 +13,8 @@
 #include <QObject>
 #include <QMap>
 
+#include <QDebug>
+
 class AbstractPropertyParser;
 class IndexWorkerPrivate : public QObject
 {
