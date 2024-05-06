@@ -8,6 +8,7 @@
 #include <QThread>
 
 class AnalyzeServerDBus;
+class VectorIndexDBus;
 class AnalyzeServerDBusWorker : public QObject
 {
     Q_OBJECT
@@ -16,6 +17,7 @@ public Q_SLOTS:
 
 private:
     QScopedPointer<AnalyzeServerDBus> asDBus;
+    QScopedPointer<VectorIndexDBus> viDBus;
 };
 
 class AnalyzeServer : public QObject

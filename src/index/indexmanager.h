@@ -6,6 +6,7 @@
 #define INDEXMANAGER_H
 
 #include "indexworker.h"
+#include "index/embeddingworker.h"
 
 #include <QObject>
 #include <QThread>
@@ -30,6 +31,9 @@ private:
 private:
     QSharedPointer<QThread> workThread { nullptr };
     QSharedPointer<IndexWorker> worker { nullptr };
+
+    QSharedPointer<QThread> embeddingWorkThread { nullptr };
+    QSharedPointer<EmbeddingWorker> embeddingWorker { nullptr };
 };
 
 #endif   // INDEXMANAGER_H

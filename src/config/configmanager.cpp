@@ -52,6 +52,14 @@ void ConfigManagerPrivate::setDefaultConfig()
     set.beginGroup(BLACKLIST_GROUP);
     set.setValue(BLACKLIST_PATHS, blacklist);
     set.endGroup();
+
+    //添加默认的可Embedding的文件夹
+    QStringList enableEmbeddingFiles {
+        QStandardPaths::writableLocation(QStandardPaths::DocumentsLocation) + "/Embedding",
+    };
+    set.beginGroup(ENABLE_EMBEDDING_FILES_LIST_GROUP);
+    set.setValue(ENABLE_EMBEDDING_PATHS, enableEmbeddingFiles);
+    set.endGroup();
 }
 
 void ConfigManagerPrivate::update()

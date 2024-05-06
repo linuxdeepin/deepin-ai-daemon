@@ -5,14 +5,15 @@
 #include "analyzeserver.h"
 #include "analyzeserverdbus.h"
 #include "analyzeserveradaptor.h"
+#include "vectorindexadaptor.h"
 
 #include <QDBusConnection>
 
 void AnalyzeServerDBusWorker::launchService()
 {
     Q_ASSERT(QThread::currentThread() != qApp->thread());
-    auto conn { QDBusConnection::sessionBus() };
-    if (!conn.registerService("org.deepin.ai.daemon.AnalyzeServer")) {
+    auto connAs { QDBusConnection::sessionBus() };
+    if (!connAs.registerService("org.deepin.ai.daemon.AnalyzeServer")) {
         qWarning("Cannot register the \"org.deepin.ai.daemon.AnalyzeServer\" service.\n");
         return;
     }
@@ -20,13 +21,31 @@ void AnalyzeServerDBusWorker::launchService()
     qInfo() << "Init DBus AnalyzeServer start";
     asDBus.reset(new AnalyzeServerDBus);
     Q_UNUSED(new AnalyzeServerAdaptor(asDBus.data()));
-    if (!conn.registerObject("/org/deepin/ai/daemon/AnalyzeServer",
+    if (!connAs.registerObject("/org/deepin/ai/daemon/AnalyzeServer",
                              asDBus.data())) {
         qWarning("Cannot register the \"/org/deepin/ai/daemon/AnalyzeServer\" object.\n");
         asDBus.reset(nullptr);
     }
 
     qInfo() << "Init DBus AnalyzeServer end";
+
+
+    auto connVi { QDBusConnection::sessionBus() };
+    if (!connVi.registerService("org.deepin.ai.daemon.VectorIndex")) {
+        qWarning("Cannot register the \"org.deepin.ai.daemon.VectorIndex\" service.\n");
+        return;
+    }
+
+    qInfo() << "Init DBus VectorIndex start";
+    viDBus.reset(new VectorIndexDBus);
+    Q_UNUSED(new VectorIndexAdaptor(viDBus.data()));
+    if (!connVi.registerObject("/org/deepin/ai/daemon/VectorIndex",
+                             viDBus.data())) {
+        qWarning("Cannot register the \"/org/deepin/ai/daemon/VectorIndex\" object.\n");
+        viDBus.reset(nullptr);
+    }
+
+    qInfo() << "Init DBus VecotrIndex end";
 }
 
 AnalyzeServer::AnalyzeServer()

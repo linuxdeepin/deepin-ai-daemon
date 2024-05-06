@@ -51,7 +51,7 @@ void FileMonitor::start(Priority p, int delayTime)
             return;
         }
 
-        emit indexManager->createAllIndex();
+        //emit indexManager->createAllIndex();
 
         if (!prepNlSock())
             return;

@@ -11,6 +11,9 @@
 #define BLACKLIST_GROUP "BlackList"
 #define BLACKLIST_PATHS "Paths"
 
+#define ENABLE_EMBEDDING_FILES_LIST_GROUP "EnableEmbeddingFilesList"
+#define ENABLE_EMBEDDING_PATHS "Paths"
+
 #define ConfigManagerIns ConfigManager::instance()
 
 class ConfigManagerPrivate;
