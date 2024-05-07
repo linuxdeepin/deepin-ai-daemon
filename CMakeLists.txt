@@ -12,16 +12,16 @@ set(CMAKE_INCLUDE_CURRENT_DIR ON)
 # set(CMAKE_Ｌ_FLAGS "-fsanitize=undefined,address,leak -fno-omit-frame-pointer")
 
 # 执行 git submodule update --init 命令
-execute_process(
-    COMMAND git submodule update --init --recursive
-    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
-    RESULT_VARIABLE SUBMODULE_UPDATE_RESULT
-)
+#execute_process(
+#    COMMAND git submodule update --init --recursive
+#    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+#    RESULT_VARIABLE SUBMODULE_UPDATE_RESULT
+#)
 
-# 检查子模块更新是否成功
-if(NOT SUBMODULE_UPDATE_RESULT EQUAL "0")
-    message(FATAL_ERROR "git submodule update --init failed: ${SUBMODULE_UPDATE_RESULT}")
-endif()
+## 检查子模块更新是否成功
+#if(NOT SUBMODULE_UPDATE_RESULT EQUAL "0")
+#    message(FATAL_ERROR "git submodule update --init failed: ${SUBMODULE_UPDATE_RESULT}")
+#endif()
 
 find_package(PkgConfig REQUIRED)
 find_package(Qt5 COMPONENTS Core REQUIRED)

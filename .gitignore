@@ -64,6 +64,8 @@ doc/html/*
 *.build
 *.buildinfo
 *.changes
-*.tar.gz
 *.log
 *.substvars
+
+
+3rdparty/faiss
