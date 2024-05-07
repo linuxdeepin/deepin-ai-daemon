@@ -43,4 +43,7 @@ Files: 3rdparty/analyzer/*
 Copyright: 2009-2014 Alan Wright
 License: LGPL-3.0-or-later
 
+Files: 3rdparty/faiss.tar.gz
+Copyright: Facebook, Inc. and its affiliates.
+License: MIT
 
