@@ -207,6 +207,11 @@ EmbeddingWorker::~EmbeddingWorker()
     delete d->indexer;
 }
 
+void EmbeddingWorker::setEmbeddingApi(embeddingApi api, void *user)
+{
+    d->embedder->setEmbeddingApi(api, user);
+}
+
 void EmbeddingWorker::onFileCreated(const QString &file)
 {
     qInfo() << "--------------file create------------" << file;

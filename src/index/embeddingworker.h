@@ -18,6 +18,7 @@ public:
     explicit EmbeddingWorker(QObject *parent = nullptr);
     ~EmbeddingWorker();
 
+    void setEmbeddingApi(embeddingApi api, void *user);
     void stop();
 
 public Q_SLOTS:

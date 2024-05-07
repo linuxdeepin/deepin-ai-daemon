@@ -15,6 +15,8 @@
 //template <typename T> class QList;
 //typedef QHash<int, QList<float>> EmbeddingVector;
 
+typedef QJsonObject (*embeddingApi)(const QStringList &texts, bool isQuery, void *user);
+
 class Embedding : public QObject
 {
     Q_OBJECT
@@ -44,6 +46,10 @@ public:
 
     QStringList loadTextsFromIndex(const QVector<faiss::idx_t> &ids, const QString &indexKey);
 
+    inline void setEmbeddingApi(embeddingApi api, void *user) {
+        onHttpEmbedding = api;
+        apiData = user;
+    }
 private:
     void init();
 
@@ -51,8 +57,8 @@ private:
     QJsonObject getDataInfo(const QString &key);
     void updateDataInfo(const QJsonObject &dataInfos, const QString &key);
 
-
-    QJsonObject onHttpEmbedding(const QStringList &texts, bool isQuery = true);
+    embeddingApi onHttpEmbedding = nullptr;
+    void *apiData = nullptr;
 
     QVector<float> embeddingVector;
     QVector<faiss::idx_t> embeddingIds;

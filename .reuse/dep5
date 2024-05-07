@@ -14,7 +14,7 @@ Copyright: None
 License: CC0-1.0
 
 # ignore files
-Files: .gitignore
+Files: .gitignore .gitmodules
 Copyright: None
 License: CC0-1.0
 

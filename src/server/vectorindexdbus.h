@@ -6,27 +6,10 @@
 #define VECTORINDEXDBUS_H
 
 #include "index/embeddingworker.h"
+#include "modelhub/modelhubwrapper.h"
 
 #include <QObject>
 #include <QDBusMessage>
-#include <QProcess>
-#include <QThread>
-
-class VectorIndexWorker : public QObject
-{
-    Q_OBJECT
-public:
-    explicit VectorIndexWorker(QObject *parent = nullptr);
-
-    void stop();
-
-public Q_SLOTS:
-    void onTaskAdded(const QString &content, QDBusMessage reply);
-
-private:
-    QProcess process;
-};
-
 
 class VectorIndexDBus : public QObject
 {
@@ -35,20 +18,24 @@ class VectorIndexDBus : public QObject
 public:
     explicit VectorIndexDBus(QObject *parent = nullptr);
     ~VectorIndexDBus();
+    static inline QString dependModel() {
+        return QString("BAAI-bge-large-zh-v1.5");
+    }
 
 public Q_SLOTS:
     bool Create(const QStringList &files, const QString &key);
     bool Delete(const QStringList &files, const QString &key);
+    bool Enable();
 
     QStringList Search(const QString &query, const QString &key, int topK);
 
+protected:
+    static QJsonObject embeddingApi(const QStringList &texts, bool isQuery, void *user);
 private:
     void init();
 
-    VectorIndexWorker *worker { nullptr };
-    QThread workerThread;
-
     EmbeddingWorker *ew {nullptr};
+    ModelhubWrapper *bgeModel = nullptr;
 };
 
 #endif // VECTORINDEXDBUS_H
