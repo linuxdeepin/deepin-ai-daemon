@@ -10,17 +10,8 @@
 EmbedDataBase::EmbedDataBase(QObject *parent)
     : QObject(parent)
 {
-    //init();
+
 }
-
-//EmbedDataBase::~EmbedDataBase()
-//{
-////    isStoped = true;
-
-////    quit();
-////    wait();
-//    qInfo() << "The embedding dataBase has quit";
-//}
 
 void EmbedDataBase::init(const QString &databaseName)
 {
@@ -127,7 +118,6 @@ bool EmbedDataBase::commitTransaction(const QString &databaseName, const QString
         close();
         return false;
     }
-
     for (const QString &queryStr : queryList) {
         if (!query.exec(queryStr)) {
             qDebug() << "Error executing query:" << query.lastError().text();
@@ -135,7 +125,6 @@ bool EmbedDataBase::commitTransaction(const QString &databaseName, const QString
             return false;
         }
     }
-
     if (!query.exec("COMMIT")) {
         qDebug() << "Failed to commit transaction";
         close();

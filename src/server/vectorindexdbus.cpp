@@ -33,10 +33,21 @@ bool VectorIndexDBus::Create(const QStringList &files, const QString &key)
     return ew->doCreateIndex(files, key);
 }
 
+bool VectorIndexDBus::Update(const QStringList &files, const QString &key)
+{
+    qInfo() << "Index Update!";
+    return ew->doUpdateIndex(files, key);
+}
+
 bool VectorIndexDBus::Delete(const QStringList &files, const QString &key)
 {
     qInfo() << "Index Delete!";
     return ew->doDeleteIndex(files, key);
+}
+
+bool VectorIndexDBus::IndexExists(const QString &key)
+{
+    return ew->indexExists(key);
 }
 
 bool VectorIndexDBus::Enable()
@@ -51,7 +62,7 @@ QStringList VectorIndexDBus::Search(const QString &query, const QString &key, in
     return  ew->doVectorSearch(query, key, topK);
 }
 
-QJsonObject VectorIndexDBus::embeddingApi(const QStringList &texts, bool isQuery, void *user)
+QJsonObject VectorIndexDBus::embeddingApi(const QStringList &texts, void *user)
 {
     VectorIndexDBus *self = static_cast<VectorIndexDBus *>(user);
     if (!self->bgeModel->ensureRunning()) {
@@ -69,9 +80,7 @@ QJsonObject VectorIndexDBus::embeddingApi(const QStringList &texts, bool isQuery
     QJsonValue jsonValue = QJsonValue(jsonArray);
 
     QJsonObject data;
-    data["is_query"] = isQuery;
-    data["query_texts"] = jsonValue;
-    //data["input"] = jsonValue;
+    data["input"] = jsonValue;
 
     QJsonDocument jsonDocHttp(data);
     QByteArray jsonDataHttp = jsonDocHttp.toJson();
@@ -110,4 +119,9 @@ void VectorIndexDBus::init()
     }
 
     bgeModel = new ModelhubWrapper(dependModel(), this);
+
+    connect(ew, &EmbeddingWorker::status, this, &VectorIndexDBus::IndexStatus);
+//    connect(ew, &EmbeddingWorker::status, [](){
+//        qInfo() << "**********";
+//    });
 }

@@ -26,7 +26,7 @@ Embedding::Embedding(QObject *parent)
     init();
 }
 
-void Embedding::embeddingDocument(const QString &docFilePath, const QString &key, bool isOverWrite)
+void Embedding::embeddingDocument(const QString &docFilePath, const QString &key)
 {
     QFileInfo docFile(docFilePath);
     if (!docFile.exists()) {
@@ -38,15 +38,6 @@ void Embedding::embeddingDocument(const QString &docFilePath, const QString &key
         qWarning() << docFilePath << "dup";
         return;
     }
-//    QJsonObject docDataObj;
-//    docDataObj = getDataInfo(key);
-//    for (const QString &it : docDataObj.keys()) {
-//        QJsonObject data = docDataObj[it].toObject();
-//        if (data["docFilePath"].toString() == docFilePath) {
-//            qWarning() << docFilePath << "dup";
-//            return;
-//        }
-//    }
 
     QString contents = DocParser::convertFile(docFilePath.toStdString()).c_str();    
     if (contents.isEmpty())
@@ -60,32 +51,15 @@ void Embedding::embeddingDocument(const QString &docFilePath, const QString &key
     //元数据、文本存储
     int continueID = getDBLastID(key);  //datainfo 起始ID
     qInfo() << "-------------" << continueID;
-//    if (!isOverWrite) {
-//        //不覆盖重写 ID接着之前的
-//        //读取DataInfo
-//        //和索引文件等，
-//        //都存在工作目录/embedding/+key的目录下。
-//        if (!docDataObj.isEmpty())
-//            continueID = docDataObj.keys().count();
-//    }
+
     QStringList insertList;
     for (int i = 0; i < chunks.count(); i++) {
         if (chunks[i].isEmpty())
             continue;
-        //dataInfo.json 存储
-//        QJsonObject docDataInfo;
-//        docDataInfo["docFilePath"] = docFilePath;
-//        docDataInfo["text"] = chunks[i];
-//        docDataObj[QString::number(continueID)] = docDataInfo;
 
         QString queryStr = "INSERT INTO embedding_metadata (id, source, content) VALUES ("
                 + QString::number(continueID) + ", '" + docFilePath + "', " + "'" + chunks[i] + "')";
         insertList << queryStr;
-//        QString queryStr = "INSERT INTO %1 (%2, %3, %4) "
-//                           "VALUES (%5, %6, %7)";
-//        queryStr = queryStr.arg(kEmbeddingDBMetaDataTable).arg(kEmbeddingDBMetaDataTableID).
-//                arg(kEmbeddingDBMetaDataTableSource).arg(kEmbeddingDBMetaDataTableContent).
-//                arg(continueID).arg(docFilePath).arg(chunks[i]);
 
         //IDS添加
         embeddingIds << continueID;
@@ -108,23 +82,23 @@ void Embedding::embeddingTexts(const QStringList &texts)
         return;
 
     QJsonObject emdObject;
-    emdObject = onHttpEmbedding(texts, false, apiData);
-
-//    QJsonArray embeddingsArray = emdObject["embedding"].toArray();
-//    for(auto embeddingObject : embeddingsArray) {
-//        QJsonArray vectorArray = embeddingObject.toObject()["embedding"].toArray();
-//        for (auto value : vectorArray) {
-//            embeddingVector << static_cast<float>(value.toDouble());
-//        }
-//    }
+    emdObject = onHttpEmbedding(texts, apiData);
 
     QJsonArray embeddingsArray = emdObject["embedding"].toArray();
     for(auto embeddingObject : embeddingsArray) {
-        QJsonArray vectorArray = embeddingObject.toArray();
+        QJsonArray vectorArray = embeddingObject.toObject()["embedding"].toArray();
         for (auto value : vectorArray) {
             embeddingVector << static_cast<float>(value.toDouble());
         }
     }
+
+//    QJsonArray embeddingsArray = emdObject["embedding"].toArray();
+//    for(auto embeddingObject : embeddingsArray) {
+//        QJsonArray vectorArray = embeddingObject.toArray();
+//        for (auto value : vectorArray) {
+//            embeddingVector << static_cast<float>(value.toDouble());
+//        }
+//    }
 }
 
 void Embedding::embeddingQuery(const QString &query, QVector<float> &queryVector)
@@ -138,22 +112,22 @@ void Embedding::embeddingQuery(const QString &query, QVector<float> &queryVector
     QStringList queryTexts;
     queryTexts << "为这个句子生成表示以用于检索相关文章:" + query;
     QJsonObject emdObject;
-    emdObject = onHttpEmbedding(queryTexts, true, apiData);
+    emdObject = onHttpEmbedding(queryTexts, apiData);
 
     //获取query
     //local
-//    QJsonArray embeddingsArray = emdObject["embedding"].toArray();
-//    for(auto embeddingObject : embeddingsArray) {
-//        QJsonArray vectorArray = embeddingObject.toObject()["embedding"].toArray();
-//        for (auto value : vectorArray) {
-//            queryVector << static_cast<float>(value.toDouble());
-//        }
-//    }
-
     QJsonArray embeddingsArray = emdObject["embedding"].toArray();
-    for (auto value : embeddingsArray) {
-        queryVector << static_cast<float>(value.toDouble());
+    for(auto embeddingObject : embeddingsArray) {
+        QJsonArray vectorArray = embeddingObject.toObject()["embedding"].toArray();
+        for (auto value : vectorArray) {
+            queryVector << static_cast<float>(value.toDouble());
+        }
     }
+
+//    QJsonArray embeddingsArray = emdObject["embedding"].toArray();
+//    for (auto value : embeddingsArray) {
+//        queryVector << static_cast<float>(value.toDouble());
+//    }
 }
 
 bool Embedding::clearAllDBTable(const QString &key)
@@ -240,18 +214,21 @@ void Embedding::init()
     //connect(this, &Embedding::embeddinged, vectorIndex, &VectorIndex::onEmbeddinged);
 }
 
-QStringList Embedding::textsSpliter(const QString &texts)
+QStringList Embedding::textsSpliter(QString &texts)
 {
     QStringList chunks;
     QStringList splitTexts;
 
-    QRegularExpression regex("[.。\\n]");
+    QString splitPattern = "。";
+    texts.replace("\n", "");
+    QRegularExpression regex(splitPattern);
     //QRegularExpression regex("END");
     splitTexts = texts.split(regex, QString::SplitBehavior::SkipEmptyParts);
 
     int chunkSize = 0;
     QString chunk = "";
-    for (const QString &text : splitTexts) {
+    for (auto text : splitTexts) {
+        text += splitPattern;
         chunkSize += text.size();
         if (chunkSize > kMaxChunksSize) {
             if (!chunk.isEmpty())
@@ -266,58 +243,6 @@ QStringList Embedding::textsSpliter(const QString &texts)
         chunks << chunk;
 
     return chunks;
-}
-
-QJsonObject Embedding::getDataInfo(const QString &key)
-{
-    QFile dataInfoFile(workerDir() + QDir::separator() + key + kDataInfo);
-    QDir dir(QFileInfo(dataInfoFile).absolutePath());
-    if (!dir.exists()) {
-        if (!dir.mkpath(dir.absolutePath())) {
-            qWarning() << dir.absolutePath() << " directory isn't exists!";
-            return {};
-        }
-    }
-
-    if (!dataInfoFile.open(QIODevice::ReadOnly)) {
-        qDebug() << "Failed to open data info file.";
-        return {};
-    }
-
-    QByteArray jsonData = dataInfoFile.readAll();
-    QJsonDocument jsonDoc = QJsonDocument::fromJson(jsonData);
-
-    if (jsonDoc.isNull()) {
-        qDebug() << "Failed to parse JSON file.";
-        return {};
-    }
-
-    QJsonObject dataInfoJson = jsonDoc.object();
-
-    return dataInfoJson;
-}
-
-void Embedding::updateDataInfo(const QJsonObject &dataInfos, const QString &key)
-{
-    if (dataInfos.isEmpty())
-        return;
-
-    QFile dataInfoFile(workerDir() + QDir::separator() + key + kDataInfo);
-    QDir dir(QFileInfo(dataInfoFile).absolutePath());
-    if (!dir.exists()) {
-        if (!dir.mkpath(dir.absolutePath())) {
-            qWarning() << dir.absolutePath() << " directory isn't exists!";
-            return;
-        }
-    }
-    if (dataInfoFile.open(QIODevice::WriteOnly)) {
-        QJsonDocument jsonDoc(dataInfos);
-        dataInfoFile.write(jsonDoc.toJson());
-        dataInfoFile.close();
-        qDebug() << "Data info JSON file updated successfully.";
-    } else {
-        qDebug() << "Failed to save data info JSON file.";
-    }
 }
 
 QStringList Embedding::loadTextsFromIndex(const QVector<faiss::idx_t> &ids, const QString &indexKey)
