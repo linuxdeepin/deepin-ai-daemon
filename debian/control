@@ -18,7 +18,8 @@ Build-Depends: debhelper (>= 9),
  libicu-dev,
  libboost-filesystem-dev,
  libblas-dev,
- liblapack-dev
+ liblapack-dev,
+ libdocparser-dev
 Standards-Version: 3.9.8
 Homepage: http://www.deepin.org/
 
