@@ -29,7 +29,7 @@ static constexpr char kFaissIvfFlatIndex[] { "IvfFlat" };
 static constexpr char kFaissIvfPQIndex[] { "IvfPQ" };
 
 //embedding define
-static constexpr int kMaxChunksSize = 50;
+static constexpr int kMaxChunksSize = 300;
 static constexpr char kDataInfo[] { "/DataInfo.json" };
 
 //文档分块后的存储结构

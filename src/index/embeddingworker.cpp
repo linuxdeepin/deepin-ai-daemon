@@ -86,17 +86,13 @@ bool EmbeddingWorkerPrivate::createSystemAssistantIndex(const QString &indexKey)
     embedder->clearAllDBTable(indexKey);
 
     QStringList embeddingFilePaths = embeddingPaths();
-    for (const QString &embeddingfile : embeddingFilePaths) {
-        if (embeddingFilePaths.first() == embeddingfile)
-            embedder->embeddingDocument(embeddingfile, indexKey, true);  //处理第一个文档设置isOverWrite=true, 进行覆盖重写
-        else
-            embedder->embeddingDocument(embeddingfile, indexKey);
-    }
+    for (const QString &embeddingfile : embeddingFilePaths)
+        embedder->embeddingDocument(embeddingfile, indexKey);
 
-    indexer->createIndex(EmbeddingDim, embedder->getEmbeddingVector(), embedder->getEmbeddingIds(), kSystemAssistantKey);
+    bool createResult = indexer->createIndex(EmbeddingDim, embedder->getEmbeddingVector(), embedder->getEmbeddingIds(), kSystemAssistantKey);
 
     embedder->embeddingClear();
-    return true;
+    return createResult;
 }
 
 bool EmbeddingWorkerPrivate::createAllIndex(const QStringList &files, const QString &indexKey)
@@ -114,17 +110,13 @@ bool EmbeddingWorkerPrivate::createAllIndex(const QStringList &files, const QStr
     embedder->createEmbedDataTable(indexKey);
     embedder->clearAllDBTable(indexKey);
 
-    for (const QString &embeddingfile : files) {
-        if (files.first() == embeddingfile)
-            embedder->embeddingDocument(embeddingfile, indexKey, true);  //处理第一个文档设置isOverWrite=true, 进行覆盖重写
-        else
-            embedder->embeddingDocument(embeddingfile, indexKey);
-    }
+    for (const QString &embeddingfile : files)
+        embedder->embeddingDocument(embeddingfile, indexKey);
 
-    indexer->createIndex(EmbeddingDim, embedder->getEmbeddingVector(), embedder->getEmbeddingIds(), indexKey);
+    bool createResult = indexer->createIndex(EmbeddingDim, embedder->getEmbeddingVector(), embedder->getEmbeddingIds(), indexKey);
 
     embedder->embeddingClear();
-    return true;
+    return createResult;
 }
 
 bool EmbeddingWorkerPrivate::updateIndex(const QStringList &files, const QString &indexKey)
@@ -133,13 +125,12 @@ bool EmbeddingWorkerPrivate::updateIndex(const QStringList &files, const QString
         embedder->embeddingDocument(embeddingfile, indexKey);
     }
 
-    indexer->updateIndex(EmbeddingDim, embedder->getEmbeddingVector(), embedder->getEmbeddingIds(), indexKey);
-
+    bool updateResult = indexer->updateIndex(EmbeddingDim, embedder->getEmbeddingVector(), embedder->getEmbeddingIds(), indexKey);
     embedder->embeddingClear();
-    return true;
+    return updateResult;
 }
 
-bool EmbeddingWorkerPrivate::deleteIndex(const QStringList &files, const QString &indexKey, QVector<faiss::idx_t> deleteID)
+bool EmbeddingWorkerPrivate::deleteIndex(const QStringList &files, const QString &indexKey)
 {
     QString sourceStr = "(";
     for (const QString &source : files) {
@@ -162,13 +153,13 @@ bool EmbeddingWorkerPrivate::deleteIndex(const QStringList &files, const QString
     if (result.isEmpty())
         return false;
 
+    QVector<faiss::idx_t> deleteID;
     for (const QVariantMap &res : result) {
         if (res["id"].isValid())
             deleteID << res["id"].toInt();
     }
 
-    indexer->deleteIndex(indexKey, deleteID);
-    return true;
+    return indexer->deleteIndex(indexKey, deleteID);
 }
 
 QStringList EmbeddingWorkerPrivate::vectorSearch(const QString &query, const QString &key, int topK)
@@ -204,7 +195,10 @@ EmbeddingWorker::EmbeddingWorker(QObject *parent)
 EmbeddingWorker::~EmbeddingWorker()
 {
     delete d->embedder;
+    d->embedder = nullptr;
+
     delete d->indexer;
+    d->indexer = nullptr;
 }
 
 void EmbeddingWorker::setEmbeddingApi(embeddingApi api, void *user)
@@ -225,14 +219,6 @@ void EmbeddingWorker::onFileDeleted(const QString &file)
     qInfo() << "--------------file delete--------------" << file;
 }
 
-void EmbeddingWorker::onUpdateAllIndex()
-{
- /* 更新所有索引
- * 1.强制更新一遍索引！
- */
-}
-
-
 /*            [key] 知识库标识
  * 如SystemAssistant为系统助手知识库的标识
  * 索引创建、向量检索时都需此参数作为.faiss索引文件的名称
@@ -246,7 +232,22 @@ bool EmbeddingWorker::doCreateIndex(const QStringList &files, const QString &key
     if (key == kSystemAssistantKey) {
         qInfo() << "create system Assistant index.";
         //创建系统助手索引
-        return d->createSystemAssistantIndex(key);
+        QFutureWatcher<void> watcher;
+        QObject::connect(&watcher, &QFutureWatcher<void>::finished, [this](){
+            Q_EMIT status(IndexCreateStatus::Success);
+        });
+        QObject::connect(&watcher, &QFutureWatcher<void>::started, [this](){
+            Q_EMIT status(IndexCreateStatus::Creating);
+        });
+        QObject::connect(&watcher, &QFutureWatcher<void>::cancel, [this](){
+            Q_EMIT status(IndexCreateStatus::Failed);
+        });
+        bool ok;
+        QFuture<void> future = QtConcurrent::run([key, &ok, this](){
+            ok = d->createSystemAssistantIndex(key);
+        });
+        watcher.setFuture(future);
+        return ok;
     }
 
     /* 创建用户知识库向量索引 [Key]
@@ -254,15 +255,50 @@ bool EmbeddingWorker::doCreateIndex(const QStringList &files, const QString &key
      * 索引、数据文件全部保存在key目录下
      * 索引、数据文件全部根据所提供的文档更新一遍
      */
-    if (!d->isIndexExists(key)) {
-        //key 索引不存在，创建。
-        return d->createAllIndex(files, key);
+    if (d->isIndexExists(key)) {
+        qInfo() << "Index Key exists!";
+        return false; //索引存在 不可创建
     }
 
-    //key 索引存在，更新。
-    d->updateIndex(files, key);
+    bool ok;
+    QFuture<void> future = QtConcurrent::run([key, files, &ok, this](){
+        ok = d->createAllIndex(files, key);
+    });
+    QFutureWatcher<void> *watcher = new QFutureWatcher<void>(this);
+    QObject::connect(watcher, &QFutureWatcher<QString>::finished, [this](){
+        Q_EMIT status(IndexCreateStatus::Success);
+    });
+    QObject::connect(watcher, &QFutureWatcher<void>::started, [this](){
+        Q_EMIT status(IndexCreateStatus::Creating);
+    });
+    QObject::connect(watcher, &QFutureWatcher<void>::cancel, [this](){
+        Q_EMIT status(IndexCreateStatus::Failed);
+    });
+    watcher->setFuture(future);
+    return ok;
+}
 
-    return true;
+bool EmbeddingWorker::doUpdateIndex(const QStringList &files, const QString &key)
+{
+    if (files.isEmpty() || !d->isIndexExists(key))
+        return false;
+
+    bool ok;
+    QFuture<void> future = QtConcurrent::run([key, files, &ok, this](){
+        ok = d->updateIndex(files, key);
+    });
+    QFutureWatcher<void> *watcher = new QFutureWatcher<void>(this);
+//    QObject::connect(watcher, &QFutureWatcher<QString>::finished, [this](){
+//        Q_EMIT status(IndexCreateStatus::Success);
+//    });
+//    QObject::connect(watcher, &QFutureWatcher<void>::started, [this](){
+//        Q_EMIT status(IndexCreateStatus::Creating);
+//    });
+//    QObject::connect(watcher, &QFutureWatcher<void>::cancel, [this](){
+//        Q_EMIT status(IndexCreateStatus::Failed);
+//    });
+    watcher->setFuture(future);
+    return ok;
 }
 
 bool EmbeddingWorker::doDeleteIndex(const QStringList &files, const QString &key)
@@ -270,9 +306,7 @@ bool EmbeddingWorker::doDeleteIndex(const QStringList &files, const QString &key
     if (files.isEmpty())
         return false;
 
-    QVector<faiss::idx_t> deleteID;
-    d->deleteIndex(files, key, deleteID);
-    return true;
+    return d->deleteIndex(files, key);
 }
 
 QStringList EmbeddingWorker::doVectorSearch(const QString &query, const QString &key, int topK)
@@ -282,4 +316,9 @@ QStringList EmbeddingWorker::doVectorSearch(const QString &query, const QString 
         return {};
     }
     return d->vectorSearch(query, key, topK);
+}
+
+bool EmbeddingWorker::indexExists(const QString &key)
+{
+    return d->isIndexExists(key);
 }

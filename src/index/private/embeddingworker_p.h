@@ -28,7 +28,7 @@ public:
     bool enableEmbedding(const QString &file);
     inline static QString workerDir()
     {
-        static QString workerDir = QStandardPaths::writableLocation(QStandardPaths::CacheLocation)
+        static QString workerDir = QStandardPaths::writableLocation(QStandardPaths::AppDataLocation)
                 + "/embedding";
         return workerDir;
     }
@@ -37,7 +37,7 @@ public:
     bool createSystemAssistantIndex(const QString &indexKey);
     bool createAllIndex(const QStringList &files, const QString &indexKey);
     bool updateIndex(const QStringList &files, const QString &indexKey);
-    bool deleteIndex(const QStringList &files, const QString &indexKey, QVector<faiss::idx_t> deleteID);
+    bool deleteIndex(const QStringList &files, const QString &indexKey);
     QStringList vectorSearch(const QString &query, const QString &key, int topK);
 
     bool isIndexExists(const QString &indexKey);

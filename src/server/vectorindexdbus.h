@@ -10,10 +10,13 @@
 
 #include <QObject>
 #include <QDBusMessage>
+#include <QProcess>
+#include <QThread>
 
 class VectorIndexDBus : public QObject
 {
-    Q_OBJECT
+    Q_OBJECT    
+
     Q_CLASSINFO("D-Bus Interface", "org.deepin.ai.daemon.VectorIndex")
 public:
     explicit VectorIndexDBus(QObject *parent = nullptr);
@@ -24,18 +27,24 @@ public:
 
 public Q_SLOTS:
     bool Create(const QStringList &files, const QString &key);
+    bool Update(const QStringList &files, const QString &key);
     bool Delete(const QStringList &files, const QString &key);
+    bool IndexExists(const QString &key);
     bool Enable();
 
     QStringList Search(const QString &query, const QString &key, int topK);
 
-protected:
-    static QJsonObject embeddingApi(const QStringList &texts, bool isQuery, void *user);
-private:
-    void init();
+signals:
+    void IndexStatus(EmbeddingWorker::IndexCreateStatus status);
 
+protected:
+    static QJsonObject embeddingApi(const QStringList &texts, void *user);
+
+private:
     EmbeddingWorker *ew {nullptr};
     ModelhubWrapper *bgeModel = nullptr;
+
+    void init();
 };
 
 #endif // VECTORINDEXDBUS_H

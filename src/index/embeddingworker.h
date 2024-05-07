@@ -21,16 +21,26 @@ public:
     void setEmbeddingApi(embeddingApi api, void *user);
     void stop();
 
+    enum IndexCreateStatus {
+        Failed = 0,
+        Success = 1,
+        Creating = 2
+    };
+
 public Q_SLOTS:
     //void onFileAttributeChanged(const QString &file);
     void onFileCreated(const QString &file);
     void onFileDeleted(const QString &file);
 
-    void onUpdateAllIndex();
-
     bool doCreateIndex(const QStringList &files, const QString &key);
+    bool doUpdateIndex(const QStringList &files, const QString &key);
     bool doDeleteIndex(const QStringList &files, const QString &key);
     QStringList doVectorSearch(const QString &query, const QString &key, int topK);
+
+    bool indexExists(const QString &key);
+
+signals:
+    void status(IndexCreateStatus status);
 
 private:
     EmbeddingWorkerPrivate *d { nullptr };

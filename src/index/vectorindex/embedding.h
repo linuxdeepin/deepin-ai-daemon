@@ -12,10 +12,7 @@
 
 #include <faiss/Index.h>
 
-//template <typename T> class QList;
-//typedef QHash<int, QList<float>> EmbeddingVector;
-
-typedef QJsonObject (*embeddingApi)(const QStringList &texts, bool isQuery, void *user);
+typedef QJsonObject (*embeddingApi)(const QStringList &texts, void *user);
 
 class Embedding : public QObject
 {
@@ -23,7 +20,7 @@ class Embedding : public QObject
 public:
     explicit Embedding(QObject *parent = nullptr);    
 
-    void embeddingDocument(const QString &docFilePath, const QString &key, bool isOverWrite = false);
+    void embeddingDocument(const QString &docFilePath, const QString &key);
     void embeddingTexts(const QStringList &texts);
     void embeddingQuery(const QString &query, QVector<float> &queryVector);
 
@@ -34,12 +31,6 @@ public:
     void createEmbedDataTable(const QString &key);
     bool isDupDocument(const QString &key, const QString &docFilePath);
 
-    inline static QString workerDir()
-    {
-        static QString workerDir = QStandardPaths::writableLocation(QStandardPaths::CacheLocation)
-                + "/embedding";
-        return workerDir;
-    }
     void embeddingClear();
     QVector<float> getEmbeddingVector();
     QVector<faiss::idx_t> getEmbeddingIds();
@@ -52,10 +43,7 @@ public:
     }
 private:
     void init();
-
-    QStringList textsSpliter(const QString &texts);
-    QJsonObject getDataInfo(const QString &key);
-    void updateDataInfo(const QJsonObject &dataInfos, const QString &key);
+    QStringList textsSpliter(QString &texts);
 
     embeddingApi onHttpEmbedding = nullptr;
     void *apiData = nullptr;

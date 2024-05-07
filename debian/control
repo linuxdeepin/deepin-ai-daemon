@@ -16,7 +16,9 @@ Build-Depends: debhelper (>= 9),
  liblucene++-dev,
  libnl-genl-3-dev,
  libicu-dev,
- libboost-filesystem-dev
+ libboost-filesystem-dev,
+ libblas-dev,
+ liblapack-dev
 Standards-Version: 3.9.8
 Homepage: http://www.deepin.org/
 

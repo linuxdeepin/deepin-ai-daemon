@@ -1,7 +1,15 @@
 <!DOCTYPE node PUBLIC "-//freedesktop//DTD D-BUS Object Introspection 1.0//EN" "http://www.freedesktop.org/standards/dbus/1.0/introspect.dtd">
 <node>
   <interface name="org.deepin.ai.daemon.VectorIndex">
+    <signal name="IndexStatus">
+      <arg name="status" type="i" direction="out"/>
+    </signal>
     <method name="Create">
+      <arg type="b" direction="out"/>
+      <arg name="files" type="as" direction="in"/>
+      <arg name="key" type="s" direction="in"/>
+    </method>
+    <method name="Update">
       <arg type="b" direction="out"/>
       <arg name="files" type="as" direction="in"/>
       <arg name="key" type="s" direction="in"/>
@@ -16,6 +24,10 @@
       <arg name="query" type="s" direction="in"/>
       <arg name="key" type="s" direction="in"/>
       <arg name="topK" type="i" direction="in"/>
+    </method>
+    <method name="IndexExists">
+      <arg type="b" direction="out"/>
+      <arg name="key" type="s" direction="in"/>
     </method>
     <method name="Enable">
       <arg type="b" direction="out"/>
