@@ -7,6 +7,8 @@
 #include "analyzeserveradaptor.h"
 #include "vectorindexadaptor.h"
 
+#include "modelhub/modelhubwrapper.h"
+
 #include <QDBusConnection>
 
 void AnalyzeServerDBusWorker::launchService()
@@ -44,7 +46,6 @@ void AnalyzeServerDBusWorker::launchService()
         qWarning("Cannot register the \"/org/deepin/ai/daemon/VectorIndex\" object.\n");
         viDBus.reset(nullptr);
     }
-
     qInfo() << "Init DBus VecotrIndex end";
 }
 

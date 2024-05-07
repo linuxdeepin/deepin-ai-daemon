@@ -17,5 +17,8 @@
       <arg name="key" type="s" direction="in"/>
       <arg name="topK" type="i" direction="in"/>
     </method>
+    <method name="Enable">
+      <arg type="b" direction="out"/>
+    </method>
   </interface>
 </node>

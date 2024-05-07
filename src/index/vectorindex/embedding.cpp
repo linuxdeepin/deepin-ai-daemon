@@ -14,11 +14,7 @@
 #include <QFile>
 #include <QDebug>
 #include <QDir>
-#include <QEventLoop>
 #include <QtConcurrent/QtConcurrent>
-
-#include <QNetworkAccessManager>
-#include <QNetworkReply>
 
 #include <docparser.h>
 
@@ -112,7 +108,7 @@ void Embedding::embeddingTexts(const QStringList &texts)
         return;
 
     QJsonObject emdObject;
-    emdObject = onHttpEmbedding(texts, false);
+    emdObject = onHttpEmbedding(texts, false, apiData);
 
 //    QJsonArray embeddingsArray = emdObject["embedding"].toArray();
 //    for(auto embeddingObject : embeddingsArray) {
@@ -142,7 +138,7 @@ void Embedding::embeddingQuery(const QString &query, QVector<float> &queryVector
     QStringList queryTexts;
     queryTexts << "为这个句子生成表示以用于检索相关文章:" + query;
     QJsonObject emdObject;
-    emdObject = onHttpEmbedding(queryTexts, true);
+    emdObject = onHttpEmbedding(queryTexts, true, apiData);
 
     //获取query
     //local
@@ -322,47 +318,6 @@ void Embedding::updateDataInfo(const QJsonObject &dataInfos, const QString &key)
     } else {
         qDebug() << "Failed to save data info JSON file.";
     }
-}
-
-QJsonObject Embedding::onHttpEmbedding(const QStringList &texts, bool isQuery)
-{
-    QNetworkAccessManager manager;
-    QNetworkRequest request(QUrl("http://10.8.11.110:8000"));
-    request.setHeader(QNetworkRequest::ContentTypeHeader, "application/json");
-
-    QJsonArray jsonArray;
-    for (const QString &str : texts) {
-        jsonArray.append(str);
-    }
-    QJsonValue jsonValue = QJsonValue(jsonArray);
-
-    QJsonObject data;
-    data["is_query"] = isQuery;
-    data["query_texts"] = jsonValue;
-    //data["input"] = jsonValue;
-
-    QJsonDocument jsonDocHttp(data);
-    QByteArray jsonDataHttp = jsonDocHttp.toJson();
-    QJsonDocument replyJson;
-    QNetworkReply *reply = manager.post(request, jsonDataHttp);
-
-    QEventLoop loop;
-    QObject::connect(reply, &QNetworkReply::finished, &loop, &QEventLoop::quit);
-    loop.exec();
-    if (reply->error() == QNetworkReply::NoError) {
-        QByteArray response = reply->readAll();
-        replyJson = QJsonDocument::fromJson(response);
-        qDebug() << "Response ok";
-    } else {
-        qDebug() << "Failed to create data:" << reply->errorString();
-    }
-    reply->deleteLater();
-    QJsonObject obj = {};
-    if (replyJson.isObject()) {
-        obj = replyJson.object();
-        return obj;
-    }
-    return {};
 }
 
 QStringList Embedding::loadTextsFromIndex(const QVector<faiss::idx_t> &ids, const QString &indexKey)

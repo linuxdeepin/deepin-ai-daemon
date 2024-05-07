@@ -4,7 +4,6 @@ project(deepin-ai-daemon)
 
 set(ANALYZESERVER_XML ${DBUS_XML_DIR}/org.deepin.ai.daemon.AnalyzeServer.xml)
 set(VectorIndex_XML ${DBUS_XML_DIR}/org.deepin.ai.daemon.VectorIndex.xml)
-set(faiss_FOUND 1)
 
 pkg_search_module(NlGenl REQUIRED libnl-genl-3.0 IMPORTED_TARGET)
 pkg_check_modules(Lucene REQUIRED IMPORTED_TARGET liblucene++ liblucene++-contrib)
@@ -18,7 +17,6 @@ find_package(DtkCMake REQUIRED)
 find_package(Qt5 COMPONENTS Widgets DBus Sql REQUIRED)
 find_package(Boost REQUIRED COMPONENTS system)
 find_package(dtkocr REQUIRED)
-find_package(faiss REQUIRED)
 
 FILE(GLOB_RECURSE SRC_FILES
     "${CMAKE_CURRENT_SOURCE_DIR}/*.h"

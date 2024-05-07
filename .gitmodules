@@ -1,0 +1,3 @@
+[submodule "3rdparty/faiss"]
+	path = 3rdparty/faiss
+	url = https://github.com/facebookresearch/faiss.git
