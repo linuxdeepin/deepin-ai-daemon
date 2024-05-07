@@ -5,13 +5,13 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 #include <QObject>
-#include <QProcess>
 
 class ModelhubWrapper : public QObject
 {
     Q_OBJECT
 public:
     explicit ModelhubWrapper(const QString &model, QObject *parent = nullptr);
+    ~ModelhubWrapper();
     bool isRunning();
     bool ensureRunning();
     bool health();
@@ -24,9 +24,9 @@ protected:
     void updateHost();
 protected:
     QString modelName;
-    QProcess process;
     QString host;
     int port = -1;
-    int started = 0;
+    bool started = false;
+    qint64 pid = -1;
 };
 #endif   // MODELHUBWRAPPER_H

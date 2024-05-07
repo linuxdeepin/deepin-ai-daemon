@@ -13,6 +13,10 @@
 #include <QNetworkRequest>
 #include <QThread>
 #include <QEventLoop>
+#include <QFileInfo>
+#include <QProcess>
+
+#include <unistd.h>
 
 ModelhubWrapper::ModelhubWrapper(const QString &model, QObject *parent)
     : QObject(parent)
@@ -21,17 +25,26 @@ ModelhubWrapper::ModelhubWrapper(const QString &model, QObject *parent)
     Q_ASSERT(!model.isEmpty());
 }
 
-bool ModelhubWrapper::isRunning()
+ModelhubWrapper::~ModelhubWrapper()
 {
-    bool run = process.state() != QProcess::NotRunning;
-    if (!run) {
-        QString out;
-        if (openCmd("deepin-modelhub --list server", out)) {
-            auto vh = QJsonDocument::fromJson(out.toUtf8()).object().toVariantHash();
-            run = vh.value("server").toStringList().contains(modelName, Qt::CaseInsensitive);
+    if (pid > 0) {
+        int rpid = modelStatus(modelName).value("pid").toInt();
+
+        // start by me, to kill.
+        if (rpid == pid) {
+            qInfo() << "kill server" << modelName << pid;
+            system(QString("kill -3 %0").arg(pid).toStdString().c_str());
+        } else {
+            qInfo() << "server" << modelName << pid << "is not launched by me.";
         }
     }
-    return run;
+}
+
+bool ModelhubWrapper::isRunning()
+{
+    QString statFile = QString("/tmp/deepin-modelhub-%0/%1.state").arg(getuid()).arg(modelName);
+    bool ret = QFileInfo::exists(statFile);
+    return ret;
 }
 
 bool ModelhubWrapper::ensureRunning()
@@ -55,18 +68,24 @@ bool ModelhubWrapper::ensureRunning()
 
     qDebug() << "start modelhub server" << modelName;
 
+    QProcess process;
     process.setProgram("deepin-modelhub");
     process.setArguments({"--run", modelName, "--exit-idle", QString::number(idle)}); // 3分钟自动退出
-    process.start();
-
-    process.waitForStarted(200);
+    bool ok = process.startDetached(&pid);
     started = cur;
+    if (!ok || pid < 1) {
+        qWarning() << "fail to start" << process.program() << process.arguments()
+                   << process.environment();
+        return false;
+    }
+
     qInfo() << modelName << "server start" << process.pid();
 
     // wait server
     {
-        int waitCount = 3 * 60 * 5;
-        while (waitCount-- && process.state() != QProcess::NotRunning) {
+        const QString proc = QString("/proc/%0").arg(pid);
+        int waitCount = 60 * 5; // 等1分钟加载模型
+        while (waitCount-- && QFileInfo::exists(proc)) {
             QThread::msleep(200);
             updateHost();
             if (!host.isEmpty() && port > 0) {
