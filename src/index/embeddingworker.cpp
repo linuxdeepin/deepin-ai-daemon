@@ -257,12 +257,22 @@ bool EmbeddingWorker::doCreateIndex(const QStringList &files, const QString &key
     if (key == kSystemAssistantKey) {
         qInfo() << "create system Assistant index.";
         //创建系统助手索引
-        bool ok;
-        QFuture<void> future = QtConcurrent::run([key, files, &ok, this](){
-            ok = d->createSystemAssistantIndex(key);
+        QFuture<bool> future = QtConcurrent::run([key, this](){
+            return d->createSystemAssistantIndex(key);
         });
-        future.waitForFinished();
-        return ok;
+        QFutureWatcher<bool> *futureWatcher = new QFutureWatcher<bool>(this);
+        QObject::connect(futureWatcher, &QFutureWatcher<QString>::finished, [futureWatcher, this](){
+            if (futureWatcher->future().result()) {
+                Q_EMIT statusChanged(IndexCreateStatus::Success);
+                qInfo() << "System index create Success";
+            } else {
+                Q_EMIT statusChanged(IndexCreateStatus::Failed);
+                qInfo() << "System index create Failed";
+            }
+            futureWatcher->deleteLater();
+        });
+        futureWatcher->setFuture(future);
+        return true;
     }
 
     /* 创建用户知识库向量索引 [Key]
@@ -271,20 +281,26 @@ bool EmbeddingWorker::doCreateIndex(const QStringList &files, const QString &key
      * 索引、数据文件全部根据所提供的文档更新一遍
      */
     if (d->isIndexExists(key)) {
-        qInfo() << "Index Key exists!";
+        qInfo() << "Index Key exists!";        
         return false; //索引存在 不可创建覆盖
     }
 
-    bool ok;
-    QFuture<void> future = QtConcurrent::run([key, files, &ok, this](){
-        ok = d->createAllIndex(files, key);
+    QFuture<bool> future = QtConcurrent::run([key, files, this](){
+        return d->createAllIndex(files, key);
     });
-    future.waitForFinished();
-    if (future.isFinished()) {
-        qInfo() << "create finished!";
-        Q_EMIT status(IndexCreateStatus::Success);
-    }
-    return ok;
+    QFutureWatcher<bool> *futureWatcher = new QFutureWatcher<bool>(this);
+    QObject::connect(futureWatcher, &QFutureWatcher<QString>::finished, [futureWatcher, this](){
+        if (futureWatcher->future().result()) {
+            Q_EMIT statusChanged(IndexCreateStatus::Success);
+            qInfo() << "Index create Success";
+        } else {
+            Q_EMIT statusChanged(IndexCreateStatus::Failed);
+            qInfo() << "Index create Failed";
+        }
+        futureWatcher->deleteLater();
+    });
+    futureWatcher->setFuture(future);
+    return true;
 }
 
 bool EmbeddingWorker::doUpdateIndex(const QStringList &files, const QString &key)
@@ -292,16 +308,22 @@ bool EmbeddingWorker::doUpdateIndex(const QStringList &files, const QString &key
     if (files.isEmpty() || !d->isIndexExists(key))
         return false;
 
-    bool ok;
-    QFuture<void> future = QtConcurrent::run([key, files, &ok, this](){
-        ok = d->updateIndex(files, key);
+    QFuture<bool> future = QtConcurrent::run([key, files, this](){
+        return d->updateIndex(files, key);
     });
-    future.waitForFinished();
-    if (future.isFinished()) {
-        qInfo() << "update finished!";
-        Q_EMIT status(IndexCreateStatus::Success);
-    }
-    return ok;
+    QFutureWatcher<bool> *futureWatcher = new QFutureWatcher<bool>(this);
+    QObject::connect(futureWatcher, &QFutureWatcher<QString>::finished, [futureWatcher, this](){
+        if (futureWatcher->future().result()) {
+            Q_EMIT statusChanged(IndexCreateStatus::Success);
+            qInfo() << "Index update Success";
+        } else {
+            Q_EMIT statusChanged(IndexCreateStatus::Failed);
+            qInfo() << "Index update Failed";
+        }
+        futureWatcher->deleteLater();
+    });
+    futureWatcher->setFuture(future);
+    return true;
 }
 
 bool EmbeddingWorker::doDeleteIndex(const QStringList &files, const QString &key)
