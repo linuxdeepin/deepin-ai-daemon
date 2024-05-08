@@ -42,7 +42,7 @@ public Q_SLOTS:
     QStringList getDocFile(const QString &key);
 
 signals:
-    void status(IndexCreateStatus status);
+    void statusChanged(IndexCreateStatus status);
 
 private:
     EmbeddingWorkerPrivate *d { nullptr };

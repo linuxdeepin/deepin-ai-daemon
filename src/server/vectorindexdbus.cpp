@@ -125,8 +125,5 @@ void VectorIndexDBus::init()
 
     bgeModel = new ModelhubWrapper(dependModel(), this);
 
-    connect(ew, &EmbeddingWorker::status, this, &VectorIndexDBus::IndexStatus);
-//    connect(ew, &EmbeddingWorker::status, [](){
-//        qInfo() << "**********";
-//    });
+    connect(ew, &EmbeddingWorker::statusChanged, this, &VectorIndexDBus::IndexStatus);
 }
