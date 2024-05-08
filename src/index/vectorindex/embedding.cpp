@@ -91,14 +91,6 @@ void Embedding::embeddingTexts(const QStringList &texts)
             embeddingVector << static_cast<float>(value.toDouble());
         }
     }
-
-//    QJsonArray embeddingsArray = emdObject["embedding"].toArray();
-//    for(auto embeddingObject : embeddingsArray) {
-//        QJsonArray vectorArray = embeddingObject.toArray();
-//        for (auto value : vectorArray) {
-//            embeddingVector << static_cast<float>(value.toDouble());
-//        }
-//    }
 }
 
 void Embedding::embeddingQuery(const QString &query, QVector<float> &queryVector)
@@ -123,11 +115,6 @@ void Embedding::embeddingQuery(const QString &query, QVector<float> &queryVector
             queryVector << static_cast<float>(value.toDouble());
         }
     }
-
-//    QJsonArray embeddingsArray = emdObject["embedding"].toArray();
-//    for (auto value : embeddingsArray) {
-//        queryVector << static_cast<float>(value.toDouble());
-//    }
 }
 
 bool Embedding::clearAllDBTable(const QString &key)
