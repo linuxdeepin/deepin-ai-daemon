@@ -185,6 +185,31 @@ QString EmbeddingWorkerPrivate::indexDir(const QString &indexKey)
     return workerDir() + QDir::separator() + indexKey;
 }
 
+QStringList EmbeddingWorkerPrivate::getIndexDocs(const QString &indexKey)
+{
+    QList<QVariantMap> result;
+    QFuture<void> future =  QtConcurrent::run([indexKey, &result](){
+        QString queryDocs = "SELECT source FROM " + QString(kEmbeddingDBMetaDataTable);
+        EmbedDBManagerIns->executeQuery(indexKey + ".db", queryDocs, result);
+    });
+
+    future.waitForFinished();
+    if (result.isEmpty())
+        return {};
+
+    QStringList queryResult;
+    for (const QVariantMap &res : result) {
+        if (res["id"].isValid())
+            queryResult << res["id"].toString();
+    }
+    QSet<QString> stringSet;
+    foreach (const QString &str, queryResult) {
+        stringSet.insert(str);
+    }
+    QStringList uniqueList = stringSet.toList();
+    return uniqueList;
+}
+
 EmbeddingWorker::EmbeddingWorker(QObject *parent)
     : QObject(parent),
       d(new EmbeddingWorkerPrivate(this))
@@ -299,4 +324,9 @@ QStringList EmbeddingWorker::doVectorSearch(const QString &query, const QString 
 bool EmbeddingWorker::indexExists(const QString &key)
 {
     return d->isIndexExists(key);
+}
+
+QStringList EmbeddingWorker::getDocFile(const QString &key)
+{
+    return d->getIndexDocs(key);
 }

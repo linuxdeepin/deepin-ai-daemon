@@ -32,6 +32,7 @@ public Q_SLOTS:
     bool IndexExists(const QString &key);
     bool Enable();
 
+    QStringList DocFiles(const QString &key);
     QStringList Search(const QString &query, const QString &key, int topK);
 
 signals:

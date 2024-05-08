@@ -106,10 +106,8 @@ bool VectorIndex::saveIndexToFile(const faiss::Index *index, const QString &inde
     QDir indexDir(indexDirStr);
 
     if (!indexDir.exists()) {
-        if (!indexDir.mkpath(indexDirStr)) {
-            qWarning() << indexKey << " directory isn't exists and can't create!";
-            return false;
-        }
+        qWarning() << indexKey << " directory isn't exists and can't create!";
+        return false;
     }
     QString indexPath = indexDir.path() + QDir::separator() + indexType + ".faiss";
     qInfo() << "index file save to " + indexPath;
@@ -131,10 +129,8 @@ faiss::Index* VectorIndex::loadIndexFromFile(const QString &indexKey, const QStr
     QDir indexDir(indexDirStr);
 
     if (!indexDir.exists()) {
-        if (!indexDir.mkpath(indexDirStr)) {
-            qWarning() << indexKey << " directory isn't exists!";
-            return {};
-        }
+        qWarning() << indexKey << " directory isn't exists!";
+        return {};
     }
     QString indexPath = indexDir.path() + QDir::separator() + indexType + ".faiss";
     qInfo() << "load index file from " + indexPath;
