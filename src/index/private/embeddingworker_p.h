@@ -42,6 +42,7 @@ public:
 
     bool isIndexExists(const QString &indexKey);
     QString indexDir(const QString &indexKey);
+    QStringList getIndexDocs(const QString &indexKey);
 
     Embedding *embedder {nullptr};
     VectorIndex *indexer {nullptr};

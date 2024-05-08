@@ -53,7 +53,12 @@ bool VectorIndexDBus::IndexExists(const QString &key)
 bool VectorIndexDBus::Enable()
 {
     return (bgeModel->isRunning()) || (ModelhubWrapper::isModelhubInstalled() &&
-        ModelhubWrapper::isModelInstalled(dependModel()));
+                                       ModelhubWrapper::isModelInstalled(dependModel()));
+}
+
+QStringList VectorIndexDBus::DocFiles(const QString &key)
+{
+    return ew->getDocFile(key);
 }
 
 QStringList VectorIndexDBus::Search(const QString &query, const QString &key, int topK)

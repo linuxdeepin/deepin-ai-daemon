@@ -39,6 +39,8 @@ public Q_SLOTS:
 
     bool indexExists(const QString &key);
 
+    QStringList getDocFile(const QString &key);
+
 signals:
     void status(IndexCreateStatus status);
 
