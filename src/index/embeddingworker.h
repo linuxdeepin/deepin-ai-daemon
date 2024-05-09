@@ -43,6 +43,7 @@ public Q_SLOTS:
 
 signals:
     void statusChanged(IndexCreateStatus status);
+    void indexCreateSuccess(const QString &key);
 
 private:
     EmbeddingWorkerPrivate *d { nullptr };

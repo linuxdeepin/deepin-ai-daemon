@@ -52,24 +52,17 @@ void Embedding::embeddingDocument(const QString &docFilePath, const QString &key
     int continueID = getDBLastID(key);  //datainfo 起始ID
     qInfo() << "-------------" << continueID;
 
-    QStringList insertList;
     for (int i = 0; i < chunks.count(); i++) {
         if (chunks[i].isEmpty())
             continue;
 
         QString queryStr = "INSERT INTO embedding_metadata (id, source, content) VALUES ("
                 + QString::number(continueID) + ", '" + docFilePath + "', " + "'" + chunks[i] + "')";
-        insertList << queryStr;
+        insertSqlstrs << queryStr;
 
         //IDS添加
         embeddingIds << continueID;
         continueID += 1;
-    }
-    //批量插入metaData到数据库
-    //[id、source、content]
-    //组装SQL语句 列表 插入
-    if (!batchInsertDataToDB(insertList, key)) {
-        qWarning() << docFilePath << "Insert DB failed.";
     }
     //向量化文本块，生成向量vector
     embeddingTexts(chunks);
@@ -183,6 +176,7 @@ void Embedding::embeddingClear()
     //isStop = true;
     embeddingVector.clear();
     embeddingIds.clear();
+    insertSqlstrs.clear();
 }
 
 QVector<float> Embedding::getEmbeddingVector()
@@ -257,9 +251,26 @@ QStringList Embedding::loadTextsFromIndex(const QVector<faiss::idx_t> &ids, cons
     if (result.isEmpty())
         return {};
 
-    for (const QVariantMap &res : result) {
-        texts << res["content"].toString();
-        docFilePaths << res["source"].toString();
+    for (faiss::idx_t id : ids) {
+        for (const QVariantMap &res : result) {
+            if (res["id"].toInt() == id) {
+                texts << res["content"].toString();
+                docFilePaths << res["source"].toString();
+                break;
+            }
+        }
     }
     return texts;
+}
+
+void Embedding::onIndexCreateSuccess(const QString &key)
+{
+    //批量插入metaData到数据库
+    //[id、source、content]
+    //组装SQL语句 列表 插入
+    if (!batchInsertDataToDB(insertSqlstrs, key)) {
+        qWarning() << "Insert DB failed.";
+    }
+
+    embeddingClear();
 }

@@ -90,8 +90,6 @@ bool EmbeddingWorkerPrivate::createSystemAssistantIndex(const QString &indexKey)
         embedder->embeddingDocument(embeddingfile, indexKey);
 
     bool createResult = indexer->createIndex(EmbeddingDim, embedder->getEmbeddingVector(), embedder->getEmbeddingIds(), kSystemAssistantKey);
-
-    embedder->embeddingClear();
     return createResult;
 }
 
@@ -114,8 +112,6 @@ bool EmbeddingWorkerPrivate::createAllIndex(const QStringList &files, const QStr
         embedder->embeddingDocument(embeddingfile, indexKey);
 
     bool createResult = indexer->createIndex(EmbeddingDim, embedder->getEmbeddingVector(), embedder->getEmbeddingIds(), indexKey);
-
-    embedder->embeddingClear();
     return createResult;
 }
 
@@ -126,7 +122,6 @@ bool EmbeddingWorkerPrivate::updateIndex(const QStringList &files, const QString
     }
 
     bool updateResult = indexer->updateIndex(EmbeddingDim, embedder->getEmbeddingVector(), embedder->getEmbeddingIds(), indexKey);
-    embedder->embeddingClear();
     return updateResult;
 }
 
@@ -214,16 +209,21 @@ EmbeddingWorker::EmbeddingWorker(QObject *parent)
     : QObject(parent),
       d(new EmbeddingWorkerPrivate(this))
 {
-
+    //索引建立成功，完成后续操作
+    connect(this, &EmbeddingWorker::indexCreateSuccess, d->embedder, &Embedding::onIndexCreateSuccess);
 }
 
 EmbeddingWorker::~EmbeddingWorker()
 {
-    delete d->embedder;
-    d->embedder = nullptr;
+    if (d->embedder) {
+        delete d->embedder;
+        d->embedder = nullptr;
+    }
 
-    delete d->indexer;
-    d->indexer = nullptr;
+    if (d->indexer) {
+        delete d->indexer;
+        d->indexer = nullptr;
+    }
 }
 
 void EmbeddingWorker::setEmbeddingApi(embeddingApi api, void *user)
@@ -261,9 +261,10 @@ bool EmbeddingWorker::doCreateIndex(const QStringList &files, const QString &key
             return d->createSystemAssistantIndex(key);
         });
         QFutureWatcher<bool> *futureWatcher = new QFutureWatcher<bool>(this);
-        QObject::connect(futureWatcher, &QFutureWatcher<QString>::finished, [futureWatcher, this](){
+        QObject::connect(futureWatcher, &QFutureWatcher<QString>::finished, [futureWatcher, key, this](){
             if (futureWatcher->future().result()) {
                 Q_EMIT statusChanged(IndexCreateStatus::Success);
+                Q_EMIT indexCreateSuccess(key);
                 qInfo() << "System index create Success";
             } else {
                 Q_EMIT statusChanged(IndexCreateStatus::Failed);
@@ -289,9 +290,10 @@ bool EmbeddingWorker::doCreateIndex(const QStringList &files, const QString &key
         return d->createAllIndex(files, key);
     });
     QFutureWatcher<bool> *futureWatcher = new QFutureWatcher<bool>(this);
-    QObject::connect(futureWatcher, &QFutureWatcher<QString>::finished, [futureWatcher, this](){
+    QObject::connect(futureWatcher, &QFutureWatcher<QString>::finished, [futureWatcher, key, this](){
         if (futureWatcher->future().result()) {
             Q_EMIT statusChanged(IndexCreateStatus::Success);
+            Q_EMIT indexCreateSuccess(key);
             qInfo() << "Index create Success";
         } else {
             Q_EMIT statusChanged(IndexCreateStatus::Failed);
@@ -312,9 +314,10 @@ bool EmbeddingWorker::doUpdateIndex(const QStringList &files, const QString &key
         return d->updateIndex(files, key);
     });
     QFutureWatcher<bool> *futureWatcher = new QFutureWatcher<bool>(this);
-    QObject::connect(futureWatcher, &QFutureWatcher<QString>::finished, [futureWatcher, this](){
+    QObject::connect(futureWatcher, &QFutureWatcher<QString>::finished, [futureWatcher, key, this](){
         if (futureWatcher->future().result()) {
             Q_EMIT statusChanged(IndexCreateStatus::Success);
+            Q_EMIT indexCreateSuccess(key);
             qInfo() << "Index update Success";
         } else {
             Q_EMIT statusChanged(IndexCreateStatus::Failed);
