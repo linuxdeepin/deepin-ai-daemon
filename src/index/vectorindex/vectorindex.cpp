@@ -47,6 +47,11 @@ bool VectorIndex::createIndex(int d, const QVector<float> &embeddings, const QVe
      * 创建索引时按照n的大小(索引文件大小、检索时间)选择IndexType
      */
     int n = embeddings.count() / d;
+    if (n != ids.count()) {
+        qDebug() << "embedding error: vectors not equal ids.";
+        return false;
+    }
+
     if (n < 1000)
         //小于1000个向量，直接Flat
         return createFlatIndex(d, embeddings, ids, indexKey);
@@ -60,6 +65,12 @@ bool VectorIndex::updateIndex(int d, const QVector<float> &embeddings, const QVe
 {
     if (embeddings.isEmpty())
         return false;
+
+    int n = embeddings.count() / d;
+    if (n != ids.count()) {
+        qDebug() << "embedding error: vectors not equal ids.";
+        return false;
+    }
 
     //TODO:会加载索引、消耗资源,存储信息到DB
     int nTotal = getIndexNTotal(indexKey);

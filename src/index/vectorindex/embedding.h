@@ -41,6 +41,9 @@ public:
         onHttpEmbedding = api;
         apiData = user;
     }
+public slots:
+    void onIndexCreateSuccess(const QString &key);
+
 private:
     void init();
     QStringList textsSpliter(QString &texts);
@@ -50,6 +53,7 @@ private:
 
     QVector<float> embeddingVector;
     QVector<faiss::idx_t> embeddingIds;
+    QStringList insertSqlstrs;
     bool isStop = false;
 };
 
