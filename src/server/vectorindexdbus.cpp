@@ -126,4 +126,5 @@ void VectorIndexDBus::init()
     bgeModel = new ModelhubWrapper(dependModel(), this);
 
     connect(ew, &EmbeddingWorker::statusChanged, this, &VectorIndexDBus::IndexStatus);
+    connect(ew, &EmbeddingWorker::indexDeleted, this, &VectorIndexDBus::IndexDeleted);
 }

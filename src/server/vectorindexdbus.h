@@ -36,7 +36,8 @@ public Q_SLOTS:
     QStringList Search(const QString &query, const QString &key, int topK);
 
 signals:
-    void IndexStatus(int status);
+    void IndexStatus(const QStringList &files, int status, const QString &key);
+    void IndexDeleted(const QStringList &files, const QString &key);
 
 protected:
     static QJsonObject embeddingApi(const QStringList &texts, void *user);

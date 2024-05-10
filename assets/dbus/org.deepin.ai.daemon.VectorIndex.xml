@@ -2,7 +2,13 @@
 <node>
   <interface name="org.deepin.ai.daemon.VectorIndex">
     <signal name="IndexStatus">
+      <arg name="files" type="as" direction="out"/>
       <arg name="status" type="i" direction="out"/>
+      <arg name="key" type="s" direction="out"/>
+    </signal>
+    <signal name="IndexDeleted">
+      <arg name="files" type="as" direction="out"/>
+      <arg name="key" type="s" direction="out"/>
     </signal>
     <method name="Create">
       <arg type="b" direction="out"/>
