@@ -42,8 +42,9 @@ public Q_SLOTS:
     QStringList getDocFile(const QString &key);
 
 signals:
-    void statusChanged(IndexCreateStatus status);
+    void statusChanged(const QStringList &files, IndexCreateStatus status, const QString &key);
     void indexCreateSuccess(const QString &key);
+    void indexDeleted(const QStringList &files, const QString &key);
 
 private:
     EmbeddingWorkerPrivate *d { nullptr };
