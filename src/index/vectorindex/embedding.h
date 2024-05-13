@@ -47,7 +47,6 @@ public slots:
 private:
     void init();
     QStringList textsSpliter(QString &texts);
-
     embeddingApi onHttpEmbedding = nullptr;
     void *apiData = nullptr;
 

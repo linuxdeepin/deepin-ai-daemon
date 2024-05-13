@@ -74,14 +74,22 @@ void Embedding::embeddingTexts(const QStringList &texts)
     if (texts.isEmpty())
         return;
 
-    QJsonObject emdObject;
-    emdObject = onHttpEmbedding(texts, apiData);
+    //防止一次文本块数太多，超过token限制，分批次单步处理
+    QStringList splitProcessText = texts;
+    int currentIndex = 0;
+    while (currentIndex < splitProcessText.size()) {
+        QStringList subList = splitProcessText.mid(currentIndex, 3);
+        currentIndex += 3;
 
-    QJsonArray embeddingsArray = emdObject["embedding"].toArray();
-    for(auto embeddingObject : embeddingsArray) {
-        QJsonArray vectorArray = embeddingObject.toObject()["embedding"].toArray();
-        for (auto value : vectorArray) {
-            embeddingVector << static_cast<float>(value.toDouble());
+        QJsonObject emdObject;
+        emdObject = onHttpEmbedding(subList, apiData);
+
+        QJsonArray embeddingsArray = emdObject["embedding"].toArray();
+        for(auto embeddingObject : embeddingsArray) {
+            QJsonArray vectorArray = embeddingObject.toObject()["embedding"].toArray();
+            for (auto value : vectorArray) {
+                embeddingVector << static_cast<float>(value.toDouble());
+            }
         }
     }
 }
@@ -200,16 +208,13 @@ QStringList Embedding::textsSpliter(QString &texts)
     QStringList chunks;
     QStringList splitTexts;
 
-    QString splitPattern = "。";
-    texts.replace("\n", "");
-    QRegularExpression regex(splitPattern);
-    //QRegularExpression regex("END");
+    QRegularExpression regex("[\n，；。]");
+    texts.replace("'", "\"");    //SQL语句有单引号会报错
     splitTexts = texts.split(regex, QString::SplitBehavior::SkipEmptyParts);
 
     int chunkSize = 0;
     QString chunk = "";
     for (auto text : splitTexts) {
-        text += splitPattern;
         chunkSize += text.size();
         if (chunkSize > kMaxChunksSize) {
             if (!chunk.isEmpty())
