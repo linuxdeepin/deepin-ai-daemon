@@ -136,6 +136,32 @@ bool EmbedDataBase::commitTransaction(const QString &databaseName, const QString
     return true;
 }
 
+bool EmbedDataBase::executeQueryFromPath(const QString &databasePath, const QString &queryStr, QList<QVariantMap> &result)
+{
+    db = QSqlDatabase::addDatabase("QSQLITE");
+    db.setDatabaseName(databasePath);
+
+    if (!open())
+        return false;
+
+    QSqlQuery query(db);
+    if (query.exec(queryStr)) {
+        while (query.next()) {
+            QVariantMap res;
+            res.insert("id", query.value(0));
+            res.insert("source", query.value(1));
+            res.insert("content", query.value(2));
+            result.push_back(res);
+        }
+        close();
+        return true;
+    } else {
+        qDebug() << "Error executing query:" << query.lastError().text();
+        close();
+        return false;
+    }
+}
+
 
 //void EmbedDataBase::start(Priority p)
 //{

@@ -21,6 +21,8 @@ public:
     bool executeQuery(const QString &databaseName, const QString &queryStr);
     bool commitTransaction(const QString &databaseName, const QStringList &queryList);
 
+    bool executeQueryFromPath(const QString &databasePath, const QString &queryStr, QList<QVariantMap> &result);
+
     bool isEmbedDataTableExists(const QString &databaseName, const QString &tableName);
 
 private:
