@@ -136,14 +136,20 @@ bool VectorIndex::saveIndexToFile(const faiss::Index *index, const QString &inde
 faiss::Index* VectorIndex::loadIndexFromFile(const QString &indexKey, const QString &indexType)
 {
     qInfo() << "load faiss index...";
-    QString indexDirStr = workerDir() + QDir::separator() + indexKey;
-    QDir indexDir(indexDirStr);
+    QString indexPath;
+    if (indexKey == kSystemAssistantKey) {
+        //TODO:区分社区版、专业版
+        indexPath = QString(kSystemAssistantData) + ".faiss";
+    } else {
+        QString indexDirStr = workerDir() + QDir::separator() + indexKey;
+        QDir indexDir(indexDirStr);
 
-    if (!indexDir.exists()) {
-        qWarning() << indexKey << " directory isn't exists!";
-        return {};
+        if (!indexDir.exists()) {
+            qWarning() << indexKey << " directory isn't exists!";
+            return {};
+        }
+        indexPath = indexDir.path() + QDir::separator() + indexType + ".faiss";
     }
-    QString indexPath = indexDir.path() + QDir::separator() + indexType + ".faiss";
     qInfo() << "load index file from " + indexPath;
 
     faiss::Index *index;

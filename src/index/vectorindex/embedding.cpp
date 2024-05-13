@@ -244,7 +244,11 @@ QStringList Embedding::loadTextsFromIndex(const QVector<faiss::idx_t> &ids, cons
     QList<QVariantMap> result;
     QFuture<void> future =  QtConcurrent::run([indexKey, idStr, &result](){
         QString query = "SELECT * FROM " + QString(kEmbeddingDBMetaDataTable) + " WHERE id IN " + idStr;
-        return EmbedDBManagerIns->executeQuery(indexKey + ".db", query, result);
+        if (indexKey == kSystemAssistantKey) {
+            return EmbedDBManagerIns->executeQueryFromPath(QString(kSystemAssistantData) + ".db", query, result);
+        } else {
+            return EmbedDBManagerIns->executeQuery(indexKey + ".db", query, result);
+        }
     });
 
     future.waitForFinished();

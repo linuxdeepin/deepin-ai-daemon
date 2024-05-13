@@ -14,6 +14,7 @@ typedef QJsonObject EmbeddingJsonObject;
 
 #define EmbeddingDim 1024
 static constexpr char kSystemAssistantKey[] { "SystemAssistant" };
+static constexpr char kSystemAssistantData[] { "/usr/share/deepin-systemassistant-knowledge/deepin-knowledge/SystemAssistant" };
 
 static constexpr char kEmbeddingDBMetaDataTable[] { "embedding_metadata" };
 static constexpr char kEmbeddingDBIndexSegTable[] { "index_segment" };
