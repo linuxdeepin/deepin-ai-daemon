@@ -19,33 +19,35 @@ public:
     ~EmbeddingWorker();
 
     void setEmbeddingApi(embeddingApi api, void *user);
-    void stop();
+    void stop(const QString &key);
 
     enum IndexCreateStatus {
         Failed = 0,
         Success = 1,
         Creating = 2
     };
-
+    IndexCreateStatus createAllState();
+    void setWatch(bool watch);
 public Q_SLOTS:
-    //void onFileAttributeChanged(const QString &file);
-    void onFileCreated(const QString &file);
-    void onFileDeleted(const QString &file);
-
     bool doCreateIndex(const QStringList &files, const QString &key);
-    bool doUpdateIndex(const QStringList &files, const QString &key);
     bool doDeleteIndex(const QStringList &files, const QString &key);
-    QStringList doVectorSearch(const QString &query, const QString &key, int topK);
 
-    bool indexExists(const QString &key);
+    void onFileMonitorCreate(const QString &file);
+    void onFileMonitorDelete(const QString &file);
+
+    void onCreateAllIndex();
+    QString doVectorSearch(const QString &query, const QString &key, int topK);
 
     QStringList getDocFile(const QString &key);
 
 signals:
-    void statusChanged(const QStringList &files, IndexCreateStatus status, const QString &key);
+    void statusChanged(const QString &key, const QStringList &files, IndexCreateStatus status);
     void indexCreateSuccess(const QString &key);
-    void indexDeleted(const QStringList &files, const QString &key);
+    void indexDeleted(const QString &key, const QStringList &files);
 
+    void stopEmbedding(const QString &key);
+private:
+    void traverseAndCreate(const QString &path);
 private:
     EmbeddingWorkerPrivate *d { nullptr };
 };

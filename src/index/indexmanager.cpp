@@ -6,47 +6,47 @@
 
 #include <QDebug>
 
+static IndexManager *kIndexManager = nullptr;
+
 IndexManager::IndexManager(QObject *parent)
     : QObject(parent),
       workThread(new QThread),
-      worker(new IndexWorker),
-      embeddingWorkThread(new QThread),
-      embeddingWorker(new EmbeddingWorker)
+      worker(new IndexWorker)
 {
-    init();
+    Q_ASSERT(kIndexManager == nullptr);
+    kIndexManager = this;
+
+    //init(); TODO:
 }
 
 IndexManager::~IndexManager()
 {
+    if (kIndexManager == this)
+        kIndexManager = nullptr;
+
     if (workThread->isRunning()) {
         worker->stop();
-        //TODO EmbeddingWorker stop
 
         workThread->quit();
         workThread->wait();
-
-        embeddingWorkThread->quit();
-        embeddingWorkThread->wait();
     }
 
     qInfo() << "The index manager has quit";
-    qInfo() << "The vector index manager has quit";
+}
+
+IndexManager *IndexManager::instance()
+{
+    return kIndexManager;
 }
 
 void IndexManager::init()
 {
-    connect(this, &IndexManager::createAllIndex, worker.data(), &IndexWorker::onCreateAllIndex);
+    //connect(this, &IndexManager::createAllIndex, worker.data(), &IndexWorker::onCreateAllIndex);
     connect(this, &IndexManager::fileCreated, worker.data(), &IndexWorker::onFileCreated);
     connect(this, &IndexManager::fileAttributeChanged, worker.data(), &IndexWorker::onFileAttributeChanged);
     connect(this, &IndexManager::fileDeleted, worker.data(), &IndexWorker::onFileDeleted);
 
-    //connect(this, &IndexManager::createAllIndex, embeddingWorker.data(), &EmbeddingWorker::onCreateAllIndex);
-    connect(this, &IndexManager::fileCreated, embeddingWorker.data(), &EmbeddingWorker::onFileCreated);
-    connect(this, &IndexManager::fileDeleted, embeddingWorker.data(), &EmbeddingWorker::onFileDeleted);
-
-    workThread->start();
-    embeddingWorkThread->start();
-
-    embeddingWorker->moveToThread(embeddingWorkThread.data());
     worker->moveToThread(workThread.data());
+    workThread->start();
 }
+

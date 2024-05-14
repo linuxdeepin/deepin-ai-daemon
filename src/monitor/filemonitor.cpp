@@ -6,6 +6,8 @@
 #include "index/indexmanager.h"
 #include "vfsgenl.h"
 #include "config/configmanager.h"
+#include "index/global_define.h"
+#include "config/configmanager.h"
 
 #include <QDebug>
 #include <QStandardPaths>
@@ -51,7 +53,7 @@ void FileMonitor::start(Priority p, int delayTime)
             return;
         }
 
-        //emit indexManager->createAllIndex();
+        emit indexManager->createAllIndex();
 
         if (!prepNlSock())
             return;
@@ -80,7 +82,7 @@ void FileMonitor::run()
 }
 
 void FileMonitor::init()
-{
+{    
     if (!(nlsock = nl_socket_alloc())) {
         qWarning() << "nl_socket_alloc fail";
         return;

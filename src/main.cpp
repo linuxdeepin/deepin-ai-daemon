@@ -51,11 +51,11 @@ int main(int argc, char *argv[])
 
     ConfigManagerIns->init();
 
+    FileMonitor monitor;
+    monitor.start(QThread::InheritPriority, 1);
+
     AnalyzeServer analyzeServer;
     analyzeServer.start();
-
-    FileMonitor monitor;
-    monitor.start(QThread::InheritPriority, 60);
 
     ResourceManager::instance()->setAutoReleaseMemory(true);
 

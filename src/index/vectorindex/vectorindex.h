@@ -8,8 +8,11 @@
 #include <QObject>
 #include <QSharedPointer>
 #include <QStandardPaths>
+#include <QVector>
 
 #include <faiss/Index.h>
+#include <faiss/IndexFlat.h>
+#include <faiss/IndexIDMap.h>
 
 class VectorIndex : public QObject
 {
@@ -19,17 +22,16 @@ public:
     explicit VectorIndex(QObject *parent = nullptr);
     void init();
 
-    bool createIndex(int d, const QVector<float> &embeddings, const QVector<faiss::idx_t> &ids, const QString &indexKey);
-    bool updateIndex(int d, const QVector<float> &embeddings, const QVector<faiss::idx_t> &ids, const QString &indexKey);
-    bool deleteIndex(const QString &indexKey, const QVector<faiss::idx_t> &deleteID);
+    bool updateIndex(int d, const QMap<faiss::idx_t, QVector<float>> &embedVectorCache, const QString &indexKey);
     bool saveIndexToFile(const faiss::Index *index, const QString &indexKey, const QString &indexType="All");
-    faiss::Index* loadIndexFromFile(const QString &indexKey, const QString &indexType="All");
 
     //DB Operate
     void createIndexSegTable(const QString &key);
 
-    QVector<faiss::idx_t> vectorSearch(int topK, const float *queryVector, const QString &indexKey);
-    QStringList loadTexts(const QVector<faiss::idx_t> &ids, const QString &indexKey);
+    void resetCacheIndex(int d, const QMap<faiss::idx_t, QVector<float>> &embedVectorCache, const QString &indexKey);
+
+    void vectorSearch(int topK, const float *queryVector, const QString &indexKey,
+                      QMap<float, faiss::idx_t> &cacheSearchRes, QMap<float, faiss::idx_t> &dumpSearchRes);
 
     inline static QString workerDir()
     {
@@ -38,21 +40,20 @@ public:
         return workerDir;
     }
 
+signals:
+    void indexDump(const QString &indexKey);
+
+private slots:
+    void onIndexDump(const QString &indexKey);
+
 private:
-    bool createFlatIndex(int d, const QVector<float> &embeddings, const QVector<faiss::idx_t> &ids, const QString &indexKey);
-    bool updateFlatIndex(int d, const QVector<float> &embeddings, const QVector<faiss::idx_t> &ids, const QString &indexKey);
-    bool deleteFlatIndex(const QVector<faiss::idx_t> &deleteID, const QString &indexKey);
-
-
-    bool createIvfFlatIndex(int d, const QVector<float> &embeddings, const QString &indexKey);
-    bool updateIvfFlatIndex(int d, const QVector<float> &embeddings, const QString &indexKey);
-
-    int getIndexNTotal(const QString &indexKey);
-
     void removeDupIndex(const faiss::Index *index, int topK, int DupK, QVector<faiss::idx_t> &nonDupIndex,
                         const float *queryVector, QMap<float, bool> &seen);
-//    void processData(const faiss::idx_t );
 
+    QHash<QString, int> getIndexFilesNum(const QString &indexKey);
+
+    QHash<QString, faiss::IndexIDMap*> flatIndexHash;
+    QVector<faiss::idx_t> segmentIds;
 };
 
 #endif // VECTORINDEX_H

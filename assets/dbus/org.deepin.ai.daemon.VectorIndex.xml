@@ -2,52 +2,43 @@
 <node>
   <interface name="org.deepin.ai.daemon.VectorIndex">
     <signal name="IndexStatus">
+      <arg name="appID" type="s" direction="out"/>
       <arg name="files" type="as" direction="out"/>
-      <arg name="status" type="i" direction="out"/>
-      <arg name="key" type="s" direction="out"/>
+      <arg name="status" type="i" direction="out"/>      
     </signal>
     <signal name="IndexDeleted">
+      <arg name="appID" type="s" direction="out"/>
       <arg name="files" type="as" direction="out"/>
-      <arg name="key" type="s" direction="out"/>
     </signal>
     <method name="Create">
       <arg type="b" direction="out"/>
-      <arg name="files" type="as" direction="in"/>
-      <arg name="key" type="s" direction="in"/>
-    </method>
-    <method name="Update">
-      <arg type="b" direction="out"/>
-      <arg name="files" type="as" direction="in"/>
-      <arg name="key" type="s" direction="in"/>
+      <arg name="appID" type="s" direction="in"/>
+      <arg name="files" type="as" direction="in"/>      
     </method>
     <method name="Delete">
       <arg type="b" direction="out"/>
-      <arg name="files" type="as" direction="in"/>
-      <arg name="key" type="s" direction="in"/>
+      <arg name="appID" type="s" direction="in"/>
+      <arg name="files" type="as" direction="in"/>      
     </method>
     <method name="Search">
-      <arg type="as" direction="out"/>
-      <arg name="query" type="s" direction="in"/>
-      <arg name="key" type="s" direction="in"/>
+      <arg type="s" direction="out"/>
+      <arg name="appID" type="s" direction="in"/>
+      <arg name="query" type="s" direction="in"/>      
       <arg name="topK" type="i" direction="in"/>
     </method>
-    <method name="IndexExists">
-      <arg type="b" direction="out"/>
-      <arg name="key" type="s" direction="in"/>
-    </method>
     <method name="DocFiles">
-      <arg type="as" direction="out"/>
-      <arg name="key" type="s" direction="in"/>
+      <arg name="appID" type="s" direction="in"/>
+      <arg type="as" direction="out"/>     
     </method>
     <method name="Enable">
       <arg type="b" direction="out"/>
     </method>
     <method name="setAutoIndex">
-      <arg name="key" type="s" direction="in"/>
+      <arg name="appID" type="s" direction="in"/>
       <arg name="on" type="b" direction="in"/>
     </method>
     <method name="getAutoIndexStatus">
-      <arg name="key" type="s" direction="in"/>
+      <arg name="appID" type="s" direction="in"/>
       <arg type="s" direction="out"/>
     </method>
   </interface>

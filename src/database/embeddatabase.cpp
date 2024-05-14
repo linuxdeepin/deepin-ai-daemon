@@ -23,6 +23,8 @@ void EmbedDataBase::init(const QString &databaseName)
 
 bool EmbedDataBase::isEmbedDataTableExists(const QString &databaseName, const QString &tableName)
 {
+    QMutexLocker lk(&mtx);
+
     init(databaseName);
 
     QSqlQuery query(db);
@@ -62,6 +64,7 @@ void EmbedDataBase::close()
 
 bool EmbedDataBase::executeQuery(const QString &databaseName, const QString &queryStr, QList<QVariantMap> &result)
 {
+    QMutexLocker lk(&mtx);
     init(databaseName);
 
     if (!open())
@@ -87,6 +90,7 @@ bool EmbedDataBase::executeQuery(const QString &databaseName, const QString &que
 
 bool EmbedDataBase::executeQuery(const QString &databaseName, const QString &queryStr)
 {
+    QMutexLocker lk(&mtx);
     init(databaseName);
 
     if (!open())
@@ -105,6 +109,7 @@ bool EmbedDataBase::executeQuery(const QString &databaseName, const QString &que
 
 bool EmbedDataBase::commitTransaction(const QString &databaseName, const QStringList &queryList)
 {
+    QMutexLocker lk(&mtx);
     init(databaseName);
 
     if (!open())
@@ -138,6 +143,8 @@ bool EmbedDataBase::commitTransaction(const QString &databaseName, const QString
 
 bool EmbedDataBase::executeQueryFromPath(const QString &databasePath, const QString &queryStr, QList<QVariantMap> &result)
 {
+    QMutexLocker lk(&mtx);
+
     db = QSqlDatabase::addDatabase("QSQLITE");
     db.setDatabaseName(databasePath);
 
@@ -161,18 +168,3 @@ bool EmbedDataBase::executeQueryFromPath(const QString &databasePath, const QStr
         return false;
     }
 }
-
-
-//void EmbedDataBase::start(Priority p)
-//{
-//    QTimer::singleShot(0 * 1000, this, [&] {
-//        if (!isInited) {
-//            qWarning() << "database is not init success";
-//            return;
-//        }
-
-//        //emit indexManager->createAllIndex();
-
-//        QThread::start(p);
-//    });
-//}
