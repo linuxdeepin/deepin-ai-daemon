@@ -100,7 +100,7 @@ QString VectorIndexDBus::getAutoIndexStatus(const QString &appID)
     hash.insert("completion", st);
     qint64 time = 0;
     {
-        QDir dir(QStandardPaths::writableLocation(QStandardPaths::AppDataLocation) + "/embedding");
+        QDir dir(QStandardPaths::writableLocation(QStandardPaths::AppDataLocation) + "/embedding/" + appID);
         QFileInfoList fileList = dir.entryInfoList(QDir::Files, QDir::Time);
         if (!fileList.isEmpty()) {
             auto file = fileList.last();
