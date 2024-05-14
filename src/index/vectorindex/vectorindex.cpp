@@ -74,6 +74,10 @@ bool VectorIndex::updateIndex(int d, const QMap<faiss::idx_t, QVector<float>> &e
 
 bool VectorIndex::saveIndexToFile(const faiss::Index *index, const QString &indexKey, const QString &indexType)
 {
+    if (!index || index->ntotal == 0) {
+        return false;
+    }
+
     qInfo() << "save faiss index...";
     QString indexDirStr = workerDir() + QDir::separator() + indexKey;
     QDir indexDir(indexDirStr);
