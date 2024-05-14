@@ -19,8 +19,8 @@ public:
     static bool isModelhubInstalled();
     static bool isModelInstalled(const QString &model);
     static QVariantHash modelStatus(const QString &model);
-protected:
     static bool openCmd(const QString &cmd, QString &out);
+protected:
     void updateHost();
 protected:
     QString modelName;

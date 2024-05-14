@@ -3,10 +3,12 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 #include "analyzeserverdbus.h"
+#include "modelhub/modelhubwrapper.h"
 
 #include <QProcess>
 #include <QDebug>
 #include <QDBusConnection>
+#include <QFileInfo>
 
 AnalyzeWorker::AnalyzeWorker(QObject *parent)
     : QObject(parent)
@@ -71,6 +73,13 @@ QString AnalyzeServerDBus::Analyze(const QString &content)
     worker->stop();
     Q_EMIT addTask(content, reply, {});
     return "";
+}
+
+bool AnalyzeServerDBus::Enable()
+{
+    QString out;
+    ModelhubWrapper::openCmd("which deepin-ai-models", out);
+    return out.contains("deepin-ai-models");
 }
 
 void AnalyzeServerDBus::init()

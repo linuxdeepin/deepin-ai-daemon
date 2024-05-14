@@ -5,5 +5,8 @@
       <arg type="s" direction="out"/>
       <arg name="content" type="s" direction="in"/>
     </method>
+    <method name="Enable">
+      <arg type="b" direction="out"/>
+    </method>
   </interface>
 </node>

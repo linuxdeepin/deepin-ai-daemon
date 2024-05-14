@@ -35,6 +35,8 @@ public Q_SLOTS:
     QStringList DocFiles(const QString &key);
     QStringList Search(const QString &query, const QString &key, int topK);
 
+    QString getAutoIndexStatus(const QString &key);
+    void setAutoIndex(const QString &key, bool on);
 signals:
     void IndexStatus(const QStringList &files, int status, const QString &key);
     void IndexDeleted(const QStringList &files, const QString &key);
