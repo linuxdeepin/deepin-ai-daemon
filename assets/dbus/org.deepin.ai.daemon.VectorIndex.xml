@@ -42,5 +42,13 @@
     <method name="Enable">
       <arg type="b" direction="out"/>
     </method>
+    <method name="setAutoIndex">
+      <arg name="key" type="s" direction="in"/>
+      <arg name="on" type="b" direction="in"/>
+    </method>
+    <method name="getAutoIndexStatus">
+      <arg name="key" type="s" direction="in"/>
+      <arg type="s" direction="out"/>
+    </method>
   </interface>
 </node>

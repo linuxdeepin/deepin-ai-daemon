@@ -67,6 +67,16 @@ QStringList VectorIndexDBus::Search(const QString &query, const QString &key, in
     return  ew->doVectorSearch(query, key, topK);
 }
 
+QString VectorIndexDBus::getAutoIndexStatus(const QString &key)
+{
+    return "";
+}
+
+void VectorIndexDBus::setAutoIndex(const QString &key, bool on)
+{
+
+}
+
 QJsonObject VectorIndexDBus::embeddingApi(const QStringList &texts, void *user)
 {
     VectorIndexDBus *self = static_cast<VectorIndexDBus *>(user);

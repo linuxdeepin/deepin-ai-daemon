@@ -127,10 +127,8 @@ QString ModelhubWrapper::urlPath(const QString &api) const
 bool ModelhubWrapper::isModelhubInstalled()
 {
     QString out;
-    if (openCmd("deepin-modelhub -v", out)) {
-        qInfo() << "model hub version is" << out;
+    if (openCmd("deepin-modelhub -v", out))
         return true;
-    }
 
     return false;
 }

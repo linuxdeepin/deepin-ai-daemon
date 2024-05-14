@@ -36,6 +36,7 @@ public:
 
 public Q_SLOTS:
     QString Analyze(const QString &content);
+    bool Enable();
 
 Q_SIGNALS:
     void addTask(const QString &content, QDBusMessage reply, QPrivateSignal);
