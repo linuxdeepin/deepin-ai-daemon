@@ -69,6 +69,12 @@ void ConfigManagerPrivate::update()
     const auto &blacklist = set.value(BLACKLIST_PATHS, QStringList()).toStringList();
     set.endGroup();
 
+    set.beginGroup(AUTO_INDEX_GROUP);
+    for (const QString &key : set.childKeys()) {
+        setValue(AUTO_INDEX_GROUP, key, set.value(key, false).toBool());
+    }
+    set.endGroup();
+
     setValue(BLACKLIST_GROUP, BLACKLIST_PATHS, blacklist);
 }
 
@@ -141,4 +147,12 @@ void ConfigManager::loadConfig()
         return;
 
     d->update();
+}
+
+void ConfigManager::setValue(const QString &group, const QString &key, bool value)
+{
+    QSettings set(d->configPath, QSettings::IniFormat);
+    set.beginGroup(group);
+    set.setValue(key, value);
+    set.endGroup();
 }

@@ -21,77 +21,81 @@
 Embedding::Embedding(QObject *parent)
     : QObject(parent)
 {
-    //数据库所有数据信息
-    //updateDataInfo();
     init();
 }
 
-void Embedding::embeddingDocument(const QString &docFilePath, const QString &key)
+bool Embedding::embeddingDocument(const QString &docFilePath, const QString &key)
 {
     QFileInfo docFile(docFilePath);
     if (!docFile.exists()) {
         qWarning() << docFilePath << "not exist";
-        return;
+        return false;
     }
 
-    if (isDupDocument(key, docFilePath)) {
+    if (isDupDocument(key, docFilePath) || sourcePaths.contains(docFilePath)) {
         qWarning() << docFilePath << "dup";
-        return;
+        return false;
     }
 
-    QString contents = DocParser::convertFile(docFilePath.toStdString()).c_str();    
+    QString contents = DocParser::convertFile(docFilePath.toStdString()).c_str();
     if (contents.isEmpty())
-        return;
+        return false;
     qInfo() << "embedding " << docFilePath;
 
     //文本分块
     QStringList chunks;
     chunks = textsSpliter(contents);
 
+    //向量化文本块，生成向量vector
+    QVector<QVector<float>> vectors;
+    vectors = embeddingTexts(chunks);
+
+    if (vectors.count() != chunks.count())
+        return false;
+
+    if (vectors.isEmpty())
+        return false;
+
     //元数据、文本存储
-    int continueID = getDBLastID(key);  //datainfo 起始ID
+    int continueID = embedDataCache.size() + getDBLastID(key);
     qInfo() << "-------------" << continueID;
 
     for (int i = 0; i < chunks.count(); i++) {
         if (chunks[i].isEmpty())
             continue;
 
-        QString queryStr = "INSERT INTO embedding_metadata (id, source, content) VALUES ("
-                + QString::number(continueID) + ", '" + docFilePath + "', " + "'" + chunks[i] + "')";
-        insertSqlstrs << queryStr;
-
         //IDS添加
         embeddingIds << continueID;
+        sourcePaths << docFilePath;
+
+        embedDataCache.insert(continueID, QPair<QString, QString>(docFilePath, chunks[i]));
+        embedVectorCache.insert(continueID, vectors[i]);
+
+        qInfo() << ">>>>>>>>><<<<<<<" <<embedDataCache.keys();
+
         continueID += 1;
     }
-    //向量化文本块，生成向量vector
-    embeddingTexts(chunks);
-    return;
+    return true;
 }
 
-void Embedding::embeddingTexts(const QStringList &texts)
+QVector<QVector<float>> Embedding::embeddingTexts(const QStringList &texts)
 {
     if (texts.isEmpty())
-        return;
+        return {};
 
-    //防止一次文本块数太多，超过token限制，分批次单步处理
-    QStringList splitProcessText = texts;
-    int currentIndex = 0;
-    while (currentIndex < splitProcessText.size()) {
-        QStringList subList = splitProcessText.mid(currentIndex, 3);
-        currentIndex += 3;
+    QJsonObject emdObject = onHttpEmbedding(texts, apiData);
 
-        QJsonObject emdObject;
-        emdObject = onHttpEmbedding(subList, apiData);
-
-        QJsonArray embeddingsArray = emdObject["embedding"].toArray();
-        for(auto embeddingObject : embeddingsArray) {
-            QJsonArray vectorArray = embeddingObject.toObject()["embedding"].toArray();
-            for (auto value : vectorArray) {
-                embeddingVector << static_cast<float>(value.toDouble());
-            }
+    QVector<QVector<float>> vectors;
+    QJsonArray embeddingsArray = emdObject["embedding"].toArray();
+    for(auto embeddingObject : embeddingsArray) {
+        QJsonArray vectorArray = embeddingObject.toObject()["embedding"].toArray();
+        QVector<float> vectorTmp;
+        for (auto value : vectorArray) {
+            vectorTmp << static_cast<float>(value.toDouble());
         }
+        vectors << vectorTmp;
     }
+    return vectors;
 }
 
 void Embedding::embeddingQuery(const QString &query, QVector<float> &queryVector)
@@ -148,7 +152,6 @@ int Embedding::getDBLastID(const QString &key)
         QString query = "SELECT id FROM " + QString(kEmbeddingDBMetaDataTable) + " ORDER BY id DESC LIMIT 1";
         return EmbedDBManagerIns->executeQuery(key + ".db", query, result);
     });
-
     future.waitForFinished();
     if (result.isEmpty() || !result[0]["id"].isValid())
         return 0;
@@ -157,11 +160,13 @@ int Embedding::getDBLastID(const QString &key)
 
 void Embedding::createEmbedDataTable(const QString &key)
 {
-    QFuture<void> future =  QtConcurrent::run([key](){
-        QString createTableSQL = "CREATE TABLE IF NOT EXISTS " + QString(kEmbeddingDBMetaDataTable) + " (id INTEGER PRIMARY KEY, source TEXT, content TEXT)";
-        return EmbedDBManagerIns->executeQuery(key + ".db", createTableSQL);
-    });
-    return future.waitForFinished();
+    qInfo() << "create DB table *****";
+
+    QString createTable1SQL = "CREATE TABLE IF NOT EXISTS " + QString(kEmbeddingDBMetaDataTable) + " (id INTEGER PRIMARY KEY, source TEXT, content TEXT)";
+    QString createTable2SQL = "CREATE TABLE IF NOT EXISTS " + QString(kEmbeddingDBIndexSegTable) + " (id INTEGER PRIMARY KEY, deleteBit INTEGER, content TEXT)";
+    EmbedDBManagerIns->executeQuery(key + ".db", createTable1SQL);
+    EmbedDBManagerIns->executeQuery(key + ".db", createTable2SQL);
+    return ;
 }
 
 bool Embedding::isDupDocument(const QString &key, const QString &docFilePath)
@@ -184,18 +189,30 @@ void Embedding::embeddingClear()
     //isStop = true;
     embeddingVector.clear();
     embeddingIds.clear();
-    insertSqlstrs.clear();
+
+    sourcePaths.clear();
+    embedDataCache.clear();
+    embedVectorCache.clear();
 }
 
 QVector<float> Embedding::getEmbeddingVector()
 {
-
     return embeddingVector;
 }
 
 QVector<faiss::idx_t> Embedding::getEmbeddingIds()
 {
     return embeddingIds;
+}
+
+QMap<faiss::idx_t, QVector<float> > Embedding::getEmbedVectorCache()
+{
+    return embedVectorCache;
+}
+
+QMap<faiss::idx_t, QPair<QString, QString> > Embedding::getEmbedDataCache()
+{
+    return embedDataCache;
 }
 
 void Embedding::init()
@@ -208,13 +225,16 @@ QStringList Embedding::textsSpliter(QString &texts)
     QStringList chunks;
     QStringList splitTexts;
 
-    QRegularExpression regex("[\n，；。]");
-    texts.replace("'", "\"");    //SQL语句有单引号会报错
+    QString splitPattern = "。";
+    texts.replace("\n", "");
+    QRegularExpression regex(splitPattern);
+    //QRegularExpression regex("END");
     splitTexts = texts.split(regex, QString::SplitBehavior::SkipEmptyParts);
 
     int chunkSize = 0;
     QString chunk = "";
     for (auto text : splitTexts) {
+        text += splitPattern;
         chunkSize += text.size();
         if (chunkSize > kMaxChunksSize) {
             if (!chunk.isEmpty())
@@ -231,52 +251,158 @@ QStringList Embedding::textsSpliter(QString &texts)
     return chunks;
 }
 
-QStringList Embedding::loadTextsFromIndex(const QVector<faiss::idx_t> &ids, const QString &indexKey)
+QString Embedding::loadTextsFromSearch(const QString &indexKey, int topK,
+                                           const QMap<float, faiss::idx_t> &cacheSearchRes, const QMap<float, faiss::idx_t> &dumpSearchRes)
 {
-    QStringList docFilePaths;
-    QStringList texts;
+    QJsonObject resultObj;
+    resultObj["version"] = VERSION;
+    QJsonArray resultArray;
 
-    QString idStr = "(";
-    for (faiss::idx_t id : ids) {
-        if (ids.last() == id) {
-            idStr += QString::number(id) + ")";
-            break;
-        }
-        idStr += QString::number(id) + ", ";
-    }
-
-    //TODO: SQL 查询结果只满足TOPK，没有按相似度排序
-    QList<QVariantMap> result;
-    QFuture<void> future =  QtConcurrent::run([indexKey, idStr, &result](){
-        QString query = "SELECT * FROM " + QString(kEmbeddingDBMetaDataTable) + " WHERE id IN " + idStr;
-        if (indexKey == kSystemAssistantKey) {
-            return EmbedDBManagerIns->executeQueryFromPath(QString(kSystemAssistantData) + ".db", query, result);
-        } else {
-            return EmbedDBManagerIns->executeQuery(indexKey + ".db", query, result);
-        }
-    });
-
-    future.waitForFinished();
-    if (result.isEmpty())
-        return {};
-
-    for (faiss::idx_t id : ids) {
-        for (const QVariantMap &res : result) {
-            if (res["id"].toInt() == id) {
-                texts << res["content"].toString();
-                docFilePaths << res["source"].toString();
-                break;
+    if (indexKey == kSystemAssistantKey) {
+        for (auto dumpIt : dumpSearchRes.keys()) {
+            faiss::idx_t id = dumpSearchRes.value(dumpIt);
+            QList<QVariantMap> result;
+            QFuture<void> future =  QtConcurrent::run([id, &result](){
+                QString query = "SELECT * FROM " + QString(kEmbeddingDBMetaDataTable) + " WHERE id = " + QString::number(id);
+                return EmbedDBManagerIns->executeQueryFromPath(QString(kSystemAssistantData) + ".db", query, result);
+            });
+            future.waitForFinished();
+            if (result.isEmpty()) {
+                return {};
             }
+
+            QVariantMap &res = result[0];
+            QString source = res["source"].toString();
+            QString content = res["content"].toString();
+            QJsonObject obj;
+            obj[kEmbeddingDBMetaDataTableSource] = source;
+            obj[kEmbeddingDBMetaDataTableContent] = content;
+            resultArray.append(obj);
+        }
+        resultObj["result"] = resultArray;
+        return QJsonDocument(resultObj).toJson(QJsonDocument::Compact);
+    }
+
+    //TODO:重排序\合并两种结果；两个距离有序数组的合并
+    int sort = 1;
+    int i = 0;
+    int j = 0;
+
+    while (i < cacheSearchRes.size() && j < dumpSearchRes.size()) {
+        if (sort == topK)
+            break;
+
+        auto cacheIt = cacheSearchRes.begin() + i;
+        auto dumpIt = dumpSearchRes.begin() + j;
+        if (cacheIt.key() > dumpIt.key()) {
+            QString source = embedDataCache[cacheIt.value()].first;
+            QString content = embedDataCache[cacheIt.value()].second;
+            QJsonObject obj;
+            obj[kEmbeddingDBMetaDataTableSource] = source;
+            obj[kEmbeddingDBMetaDataTableContent] = content;
+            resultArray.append(obj);
+            sort++;
+            i++;
+        } else {
+            faiss::idx_t id = dumpIt.value();
+            QList<QVariantMap> result;
+            QFuture<void> future =  QtConcurrent::run([indexKey, id, &result](){
+                QString query = "SELECT * FROM " + QString(kEmbeddingDBMetaDataTable) + " WHERE id IN " + QString::number(id);
+                return EmbedDBManagerIns->executeQuery(indexKey + ".db", query, result);
+            });
+            future.waitForFinished();
+            if (result.isEmpty()) {
+                j++;
+                continue;
+            }
+
+            QVariantMap &res = result[0];
+            QString source = res["content"].toString();
+            QString content = res["source"].toString();
+            QJsonObject obj;
+            obj[kEmbeddingDBMetaDataTableSource] = source;
+            obj[kEmbeddingDBMetaDataTableContent] = content;
+            resultArray.append(obj);
+            sort++;
+            j++;
         }
     }
-    return texts;
+
+    while (i < cacheSearchRes.size()) {
+        if (sort == topK)
+            break;
+
+        auto cacheIt = cacheSearchRes.begin() + i;
+        QString source = embedDataCache[cacheIt.value()].first;
+        QString content = embedDataCache[cacheIt.value()].second;
+        QJsonObject obj;
+        obj[kEmbeddingDBMetaDataTableSource] = source;
+        obj[kEmbeddingDBMetaDataTableContent] = content;
+        resultArray.append(obj);
+        sort++;
+        i++;
+    }
+
+    while (j < dumpSearchRes.size()) {
+        if (sort == topK)
+            break;
+
+        auto dumpIt = dumpSearchRes.begin() + j;
+        faiss::idx_t id = dumpIt.value();
+        QList<QVariantMap> result;
+        QFuture<void> future =  QtConcurrent::run([indexKey, id, &result](){
+            QString query = "SELECT * FROM " + QString(kEmbeddingDBMetaDataTable) + " WHERE id = " + QString::number(id);
+            return EmbedDBManagerIns->executeQuery(indexKey + ".db", query, result);
+        });
+        future.waitForFinished();
+        if (result.isEmpty()) {
+            j++;
+            continue;
+        }
+
+        QVariantMap &res = result[0];
+        QString source = res["source"].toString();
+        QString content = res["content"].toString();
+        QJsonObject obj;
+        obj[kEmbeddingDBMetaDataTableSource] = source;
+        obj[kEmbeddingDBMetaDataTableContent] = content;
+        resultArray.append(obj);
+        sort++;
+        j++;
+    }
+    resultObj["result"] = resultArray;
+    return QJsonDocument(resultObj).toJson(QJsonDocument::Compact);
+}
+
+void Embedding::deleteCacheIndex(const QStringList &files)
+{
+    if (files.isEmpty())
+        return;
+
+    for (auto id : embedDataCache.keys()) {
+        if (!files.contains(embedDataCache.value(id).first))
+            continue;
+
+        //删除文档数据、删除向量
+        embedDataCache.remove(id);
+        embedVectorCache.remove(id);
+    }
 }
 
 void Embedding::onIndexCreateSuccess(const QString &key)
 {
-    //批量插入metaData到数据库
-    //[id、source、content]
-    //组装SQL语句 列表 插入
+
+}
+
+void Embedding::onIndexDump(const QString &key)
+{
+    //插入源信息
+    QStringList insertSqlstrs;
+    for (auto id : embedDataCache.keys()) {
+        QString queryStr = "INSERT INTO embedding_metadata (id, source, content) VALUES ("
+                + QString::number(id) + ", '" + embedDataCache.value(id).first + "', " + "'" + embedDataCache.value(id).second + "')";
+        insertSqlstrs << queryStr;
+    }
     if (!batchInsertDataToDB(insertSqlstrs, key)) {
         qWarning() << "Insert DB failed.";
     }

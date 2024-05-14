@@ -14,6 +14,9 @@
 #define ENABLE_EMBEDDING_FILES_LIST_GROUP "EnableEmbeddingFilesList"
 #define ENABLE_EMBEDDING_PATHS "Paths"
 
+#define AUTO_INDEX_GROUP "AutoIndex"
+#define AUTO_INDEX_STATUS "Status"
+
 #define ConfigManagerIns ConfigManager::instance()
 
 class ConfigManagerPrivate;
@@ -25,10 +28,11 @@ public:
     void init();
 
     QVariant value(const QString &group, const QString &key, const QVariant &defaultValue = QVariant()) const;
+    void setValue(const QString &group, const QString &key, bool value);
 
 protected Q_SLOTS:
     void onFileChanged(const QString &file);
-    void loadConfig();
+    void loadConfig();    
 
 private:
     explicit ConfigManager(QObject *parent = nullptr);

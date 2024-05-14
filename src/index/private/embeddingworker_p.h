@@ -38,24 +38,18 @@ public:
     bool createAllIndex(const QStringList &files, const QString &indexKey);
     bool updateIndex(const QStringList &files, const QString &indexKey);
     bool deleteIndex(const QStringList &files, const QString &indexKey);
-    QStringList vectorSearch(const QString &query, const QString &key, int topK);
+    QString vectorSearch(const QString &query, const QString &key, int topK);
 
     bool isIndexExists(const QString &indexKey);
     QString indexDir(const QString &indexKey);
     QStringList getIndexDocs(const QString &indexKey);
 
+    bool isSupportDoc(const QString &file);
+
     Embedding *embedder {nullptr};
     VectorIndex *indexer {nullptr};
 
-    //void doIndexTask(const VectorIndex &index, const QString &file, IndexType type);
-//    void indexFile(Lucene::IndexWriterPtr writer, const QString &file, IndexType type);
-//    bool checkUpdate(const Lucene::IndexReaderPtr &reader, const QString &file, IndexType &type);
-//    Lucene::DocumentPtr indexDocument(const QString &file);
-//    QList<AbstractPropertyParser::Property> fileProperties(const QString &file);
-
-//    QMap<QString, AbstractPropertyParser *> propertyParsers;
-//    quint32 indexFileCount { 0 };
-//    std::atomic_bool isStoped { false };
+    bool m_creatingAll = false;
 };
 
 #endif // VECTORWORKER_P_H

@@ -8,6 +8,7 @@
 #include <QObject>
 #include <QThread>
 #include <QtSql>
+#include <QMutex>
 
 #define EmbedDBManagerIns EmbedDataBase::instance()
 
@@ -30,6 +31,7 @@ private:
 
 private:
     QSqlDatabase db;
+    QMutex mtx;
 
     void init(const QString &databaseName);
     bool open();

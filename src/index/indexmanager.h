@@ -7,6 +7,7 @@
 
 #include "indexworker.h"
 #include "index/embeddingworker.h"
+#include "modelhub/modelhubwrapper.h"
 
 #include <QObject>
 #include <QThread>
@@ -18,22 +19,18 @@ class IndexManager : public QObject
 public:
     explicit IndexManager(QObject *parent = nullptr);
     ~IndexManager();
-
+    static IndexManager *instance();
 Q_SIGNALS:
     void createAllIndex();
     void fileAttributeChanged(const QString &file);
     void fileCreated(const QString &file);
     void fileDeleted(const QString &file);
-
 private:
     void init();
 
 private:
     QSharedPointer<QThread> workThread { nullptr };
     QSharedPointer<IndexWorker> worker { nullptr };
-
-    QSharedPointer<QThread> embeddingWorkThread { nullptr };
-    QSharedPointer<EmbeddingWorker> embeddingWorker { nullptr };
 };
 
 #endif   // INDEXMANAGER_H

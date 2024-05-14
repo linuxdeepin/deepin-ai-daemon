@@ -7,11 +7,14 @@
 #include "config/configmanager.h"
 #include "database/embeddatabase.h"
 #include "global_define.h"
+#include "index/indexmanager.h"
 
 #include <QDebug>
 #include <QDir>
+#include <QFileInfo>
 
-#include <index/private/embeddingworker_p.h>
+#include <dirent.h>
+#include <sys/stat.h>
 
 EmbeddingWorkerPrivate::EmbeddingWorkerPrivate(QObject *parent)
     : QObject(parent)
@@ -33,6 +36,8 @@ void EmbeddingWorkerPrivate::init()
     //embedding、向量索引
     embedder = new Embedding(this);
     indexer = new VectorIndex(this);
+
+    connect(indexer, &VectorIndex::indexDump, embedder, &Embedding::onIndexDump);
 }
 
 bool EmbeddingWorkerPrivate::enableEmbedding(const QString &file)
@@ -69,60 +74,18 @@ QStringList EmbeddingWorkerPrivate::embeddingPaths()
     return embeddingFilePaths;
 }
 
-bool EmbeddingWorkerPrivate::createSystemAssistantIndex(const QString &indexKey)
-{
-    /* 创建系统助手索引
-     * 所有 ~/Documents/Embedding 文件夹下所有文档的索引
-     *
-    * 1.索引是否存在？ 通过dataINfo.json中的文件名判断。存在则跳过。XXX
-    * 2.数量较少，暂时先用Flat构建成一个索引。
-    *
-    */
-       //强制更新~/Documents/Embedding/下的所有文件的向量索引
-       //dataINfo\embeddingInfo 都会进行覆盖
-       //embeddingPaths:系统助手文档文件夹
-    //创建所有、重置表
-    embedder->createEmbedDataTable(indexKey);
-    embedder->clearAllDBTable(indexKey);
-
-    QStringList embeddingFilePaths = embeddingPaths();
-    for (const QString &embeddingfile : embeddingFilePaths)
-        embedder->embeddingDocument(embeddingfile, indexKey);
-
-    bool createResult = indexer->createIndex(EmbeddingDim, embedder->getEmbeddingVector(), embedder->getEmbeddingIds(), kSystemAssistantKey);
-    return createResult;
-}
-
-bool EmbeddingWorkerPrivate::createAllIndex(const QStringList &files, const QString &indexKey)
-{
-    QString indexDirStr = workerDir() + QDir::separator() + indexKey;
-    QDir dir(indexDirStr);
-
-    //创建索引目录
-    if (!dir.mkpath(indexDirStr)) {
-        qWarning() << indexKey << " directory can't create!";
-        return false;
-    }
-
-    //创建所有、重置表
-    embedder->createEmbedDataTable(indexKey);
-    embedder->clearAllDBTable(indexKey);
-
-    for (const QString &embeddingfile : files)
-        embedder->embeddingDocument(embeddingfile, indexKey);
-
-    bool createResult = indexer->createIndex(EmbeddingDim, embedder->getEmbeddingVector(), embedder->getEmbeddingIds(), indexKey);
-    return createResult;
-}
 
 bool EmbeddingWorkerPrivate::updateIndex(const QStringList &files, const QString &indexKey)
 {
-    for (const QString &embeddingfile : files) {
-        embedder->embeddingDocument(embeddingfile, indexKey);
-    }
+    embedder->createEmbedDataTable(indexKey);
 
-    bool updateResult = indexer->updateIndex(EmbeddingDim, embedder->getEmbeddingVector(), embedder->getEmbeddingIds(), indexKey);
-    return updateResult;
+    bool embedRes = false;
+    for (const QString &embeddingfile : files) {
+        embedRes = embedder->embeddingDocument(embeddingfile, indexKey);
+    }
+    bool updateResult = indexer->updateIndex(EmbeddingDim, embedder->getEmbedVectorCache(), indexKey);
+
+    return updateResult && embedRes;
 }
 
 bool EmbeddingWorkerPrivate::deleteIndex(const QStringList &files, const QString &indexKey)
@@ -136,43 +99,46 @@ bool EmbeddingWorkerPrivate::deleteIndex(const QStringList &files, const QString
         sourceStr += "'" + source + "', ";
     }
 
+    //删除缓存中的数据、重置缓存索引
+    if (!embedder->getEmbedVectorCache().isEmpty()) {
+        embedder->deleteCacheIndex(files);
+        indexer->resetCacheIndex(EmbeddingDim, embedder->getEmbedVectorCache(), indexKey);
+    }
+
+    //删除已存储的数据、索引deleteBitSet置1
     QList<QVariantMap> result;
     QFuture<void> future =  QtConcurrent::run([indexKey, sourceStr, &result](){
         QString queryDeleteID = "SELECT id FROM " + QString(kEmbeddingDBMetaDataTable) + " WHERE source IN " + sourceStr;
         QString queryDelete = "DELETE FROM " + QString(kEmbeddingDBMetaDataTable) + " WHERE source IN " + sourceStr;
+//        QString updateBitSet = "UPDATE " + QString(kEmbeddingDBIndexSegTable) + " SET "
+//                + QString(kEmbeddingDBSegIndexTableBitSet) + " = " + QString::number(0) + " WHERE id = ";
         EmbedDBManagerIns->executeQuery(indexKey + ".db", queryDeleteID, result);
         EmbedDBManagerIns->executeQuery(indexKey + ".db", queryDelete);
     });
-
     future.waitForFinished();
     if (result.isEmpty())
         return false;
 
-    QVector<faiss::idx_t> deleteID;
-    for (const QVariantMap &res : result) {
-        if (res["id"].isValid())
-            deleteID << res["id"].toInt();
-    }
-
-    return indexer->deleteIndex(indexKey, deleteID);
+//    QVector<faiss::idx_t> deleteID;
+//    for (const QVariantMap &res : result) {
+//        if (res["id"].isValid())
+//            deleteID << res["id"].toInt();
+//    }
+//    return indexer->deleteIndex(indexKey, deleteID);
+    return true;
 }
 
-QStringList EmbeddingWorkerPrivate::vectorSearch(const QString &query, const QString &key, int topK)
+QString EmbeddingWorkerPrivate::vectorSearch(const QString &query, const QString &key, int topK)
 {
     QVector<float> queryVector;  //查询向量 传递float指针
     embedder->embeddingQuery(query, queryVector);
 
-    QVector<faiss::idx_t> I1 = indexer->vectorSearch(topK, queryVector.data(), key);
-    qInfo() << I1;
-    return embedder->loadTextsFromIndex(I1, key);
-}
-
-bool EmbeddingWorkerPrivate::isIndexExists(const QString &indexKey)
-{
-    //直接根据索引的key目录是否存在，判断index是否已经创建
-    QString indexDirStr = indexDir(indexKey);
-    QDir dir(indexDirStr);
-    return dir.exists();
+    QMap<float, faiss::idx_t> cacheSearchRes;
+    QMap<float, faiss::idx_t> dumpSearchRes;
+    indexer->vectorSearch(topK, queryVector.data(), key, cacheSearchRes, dumpSearchRes);
+    QString res = embedder->loadTextsFromSearch(key, topK, cacheSearchRes, dumpSearchRes);
+    qInfo() << "search result: " << res;
+    return res;
 }
 
 QString EmbeddingWorkerPrivate::indexDir(const QString &indexKey)
@@ -205,12 +171,29 @@ QStringList EmbeddingWorkerPrivate::getIndexDocs(const QString &indexKey)
     return uniqueList;
 }
 
+bool EmbeddingWorkerPrivate::isSupportDoc(const QString &file)
+{
+    QFileInfo fileInfo(file);
+    QStringList suffixs;
+    suffixs << "txt"
+           << "doc"
+           << "docx"
+           << "xls"
+           << "xlsx"
+           << "ppt"
+           << "pptx"
+           << "pdf";
+
+    return suffixs.contains(fileInfo.suffix());
+}
+
 EmbeddingWorker::EmbeddingWorker(QObject *parent)
     : QObject(parent),
       d(new EmbeddingWorkerPrivate(this))
 {
     //索引建立成功，完成后续操作
     connect(this, &EmbeddingWorker::indexCreateSuccess, d->embedder, &Embedding::onIndexCreateSuccess);
+    connect(this, &EmbeddingWorker::stopEmbedding, d->indexer, &VectorIndex::indexDump);
 }
 
 EmbeddingWorker::~EmbeddingWorker()
@@ -224,6 +207,8 @@ EmbeddingWorker::~EmbeddingWorker()
         delete d->indexer;
         d->indexer = nullptr;
     }
+
+    //TODO:停止embeddding、已建索引落盘、数据存储等
 }
 
 void EmbeddingWorker::setEmbeddingApi(embeddingApi api, void *user)
@@ -231,17 +216,27 @@ void EmbeddingWorker::setEmbeddingApi(embeddingApi api, void *user)
     d->embedder->setEmbeddingApi(api, user);
 }
 
-void EmbeddingWorker::onFileCreated(const QString &file)
+void EmbeddingWorker::stop(const QString &key)
 {
-    qInfo() << "--------------file create------------" << file;
-    if (d->enableEmbedding(file)) {
-        return;
-    }
+    d->m_creatingAll = false;
+    Q_EMIT stopEmbedding(key);
 }
 
-void EmbeddingWorker::onFileDeleted(const QString &file)
+EmbeddingWorker::IndexCreateStatus EmbeddingWorker::createAllState()
 {
-    qInfo() << "--------------file delete--------------" << file;
+    return  d->m_creatingAll ? Creating : Success;
+}
+
+void EmbeddingWorker::setWatch(bool watch)
+{
+    auto idx = IndexManager::instance();
+    Q_ASSERT(idx);
+    disconnect(idx, nullptr, this, nullptr);
+    if (watch) {
+        connect(idx, &IndexManager::fileCreated, this, &EmbeddingWorker::onFileMonitorCreate);
+        connect(idx, &IndexManager::fileDeleted, this, &EmbeddingWorker::onFileMonitorDelete);
+        //connect(idx, &IndexManager::fileAttributeChanged, this, );
+    }
 }
 
 /*            [key] 知识库标识
@@ -251,109 +246,145 @@ void EmbeddingWorker::onFileDeleted(const QString &file)
  */
 bool EmbeddingWorker::doCreateIndex(const QStringList &files, const QString &key)
 {
-    if (files.isEmpty() && key != kSystemAssistantKey)
-        return false;
-
-    if (key == kSystemAssistantKey) {
-        qInfo() << "create system Assistant index.";
-        //创建系统助手索引
-        QFuture<bool> future = QtConcurrent::run([key, this](){
-            return d->createSystemAssistantIndex(key);
-        });
-        QFutureWatcher<bool> *futureWatcher = new QFutureWatcher<bool>(this);
-        QObject::connect(futureWatcher, &QFutureWatcher<QString>::finished, [files, futureWatcher, key, this](){
-            if (futureWatcher->future().result()) {
-                Q_EMIT statusChanged(files, IndexCreateStatus::Success, key);
-                Q_EMIT indexCreateSuccess(key);
-                qInfo() << "System index create Success";
-            } else {
-                Q_EMIT statusChanged(files, IndexCreateStatus::Failed, key);
-                qInfo() << "System index create Failed";
-            }
-            futureWatcher->deleteLater();
-        });
-        futureWatcher->setFuture(future);
-        return true;
-    }
-
-    /* 创建用户知识库向量索引 [Key]
-     * Files List全部创建
-     * 索引、数据文件全部保存在key目录下
-     * 索引、数据文件全部根据所提供的文档更新一遍
-     */
-    if (d->isIndexExists(key)) {
-        qInfo() << "Index Key exists!";        
-        return false; //索引存在 不可创建覆盖
-    }
-
-    QFuture<bool> future = QtConcurrent::run([key, files, this](){
-        return d->createAllIndex(files, key);
-    });
-    QFutureWatcher<bool> *futureWatcher = new QFutureWatcher<bool>(this);
-    QObject::connect(futureWatcher, &QFutureWatcher<QString>::finished, [files, futureWatcher, key, this](){
-        if (futureWatcher->future().result()) {
-            Q_EMIT statusChanged(files, IndexCreateStatus::Success, key);
-            Q_EMIT indexCreateSuccess(key);
-            qInfo() << "Index create Success";
-        } else {
-            Q_EMIT statusChanged(files, IndexCreateStatus::Failed, key);
-            qInfo() << "Index create Failed";
+    //过滤文档
+    for (auto it : files) {
+        if (!d->isSupportDoc(it)) {
+            qDebug() << it << " doc not support!";
+            return false;
         }
-        futureWatcher->deleteLater();
-    });
-    futureWatcher->setFuture(future);
-    return true;
-}
+    }
 
-bool EmbeddingWorker::doUpdateIndex(const QStringList &files, const QString &key)
-{
-    if (files.isEmpty() || !d->isIndexExists(key))
-        return false;
-
-    QFuture<bool> future = QtConcurrent::run([key, files, this](){
+    QFuture<bool> future = QtConcurrent::run([files, key, this](){
         return d->updateIndex(files, key);
     });
     QFutureWatcher<bool> *futureWatcher = new QFutureWatcher<bool>(this);
-    QObject::connect(futureWatcher, &QFutureWatcher<QString>::finished, [files, futureWatcher, key, this](){
+    QObject::connect(futureWatcher, &QFutureWatcher<QString>::finished, [futureWatcher, this](){
         if (futureWatcher->future().result()) {
-            Q_EMIT statusChanged(files, IndexCreateStatus::Success, key);
-            Q_EMIT indexCreateSuccess(key);
             qInfo() << "Index update Success";
+            //Q_EMIT indexCreateSuccess(kGrandVectorSearch);
         } else {
-            Q_EMIT statusChanged(files, IndexCreateStatus::Failed, key);
             qInfo() << "Index update Failed";
         }
         futureWatcher->deleteLater();
     });
     futureWatcher->setFuture(future);
+
     return true;
 }
 
 bool EmbeddingWorker::doDeleteIndex(const QStringList &files, const QString &key)
 {
-    if (files.isEmpty())
-        return false;
+    for (auto it : files) {
+        if (!d->isSupportDoc(it)) {
+            qDebug() << it << " doc not support!";
+            return false;
+        }
+    }
 
-     bool ret = d->deleteIndex(files, key);
+    QFuture<bool> future = QtConcurrent::run([files, key, this](){
+        return d->deleteIndex(files, key);
+    });
+    QFutureWatcher<bool> *futureWatcher = new QFutureWatcher<bool>(this);
+    QObject::connect(futureWatcher, &QFutureWatcher<QString>::finished, [futureWatcher, this](){
+        if (futureWatcher->future().result()) {
+            qInfo() << "Index update Success";
+            //Q_EMIT indexCreateSuccess(kGrandVectorSearch);
+        } else {
+            qInfo() << "Index update Failed";
+        }
+        futureWatcher->deleteLater();
+    });
+    futureWatcher->setFuture(future);
 
-     if (ret)
-         Q_EMIT indexDeleted(files, key);
-
-     return ret;
+    return true;
 }
 
-QStringList EmbeddingWorker::doVectorSearch(const QString &query, const QString &key, int topK)
+void EmbeddingWorker::onFileMonitorCreate(const QString &file)
+{
+    doCreateIndex(QStringList(file), kGrandVectorSearch);
+}
+
+void EmbeddingWorker::onFileMonitorDelete(const QString &file)
+{
+    doDeleteIndex(QStringList(file), kGrandVectorSearch);
+}
+
+void EmbeddingWorker::onCreateAllIndex()
+{
+    QFuture<void> future = QtConcurrent::run([this](){
+        d->m_creatingAll = true;
+        QString path = QStandardPaths::writableLocation(QStandardPaths::HomeLocation);
+        traverseAndCreate(path);
+    });
+
+    QFutureWatcher<void> *futureWatcher = new QFutureWatcher<void>(this);
+    QObject::connect(futureWatcher, &QFutureWatcher<QString>::finished, [futureWatcher, this](){
+        qInfo() << "Create All Index Finished";
+        futureWatcher->deleteLater();
+        this->d->m_creatingAll = false;
+    });
+    futureWatcher->setFuture(future);
+}
+
+void EmbeddingWorker::traverseAndCreate(const QString &path)
+{
+    const std::string tmp = path.toStdString();
+    const char *filePath = tmp.c_str();
+    struct stat st;
+    if (stat(filePath, &st) != 0)
+        return;
+
+    if (S_ISDIR(st.st_mode)) {
+        DIR *dir = nullptr;
+        if (!(dir = opendir(filePath))) {
+            qWarning() << "can not open: " << filePath;
+            return;
+        }
+
+        struct dirent *dent = nullptr;
+        char fn[FILENAME_MAX] = { 0 };
+        strcpy(fn, filePath);
+        size_t len = strlen(filePath);
+        if (strcmp(filePath, "/"))
+            fn[len++] = '/';
+
+        // traverse
+        while ((dent = readdir(dir)) && d->m_creatingAll) {
+            if (dent->d_name[0] == '.')
+                continue;
+
+            if (!strcmp(dent->d_name, ".") || !strcmp(dent->d_name, ".."))
+                continue;
+
+            strncpy(fn + len, dent->d_name, FILENAME_MAX - len);
+            traverseAndCreate(fn);
+        }
+
+        if (dir)
+            closedir(dir);
+        return;
+    }
+
+//    if (isCheck && !checkUpdate(writer->getReader(), file, type))
+//        return;
+
+    qDebug() << "xxxxxxxxx22222" << path;
+    if (!d->isSupportDoc(path)) {
+        qDebug() << path << " doc not support!";
+        return;
+    }
+
+    if (d->m_creatingAll)
+        d->updateIndex({path}, kGrandVectorSearch);
+}
+
+QString EmbeddingWorker::doVectorSearch(const QString &query, const QString &key, int topK)
 {
     if (query.isEmpty()) {
         qWarning() << "query is empty!";
         return {};
     }
     return d->vectorSearch(query, key, topK);
-}
-
-bool EmbeddingWorker::indexExists(const QString &key)
-{
-    return d->isIndexExists(key);
 }
 
 QStringList EmbeddingWorker::getDocFile(const QString &key)

@@ -26,29 +26,31 @@ public:
     }
 
 public Q_SLOTS:
-    bool Create(const QStringList &files, const QString &key);
-    bool Update(const QStringList &files, const QString &key);
-    bool Delete(const QStringList &files, const QString &key);
-    bool IndexExists(const QString &key);
+    bool Create(const QString &appID, const QStringList &files);
+    bool Delete(const QString &appID, const QStringList &files);
+    QString Search(const QString &appID, const QString &query, int topK);
+
     bool Enable();
+    QStringList DocFiles(const QString &appID);
 
-    QStringList DocFiles(const QString &key);
-    QStringList Search(const QString &query, const QString &key, int topK);
-
-    QString getAutoIndexStatus(const QString &key);
-    void setAutoIndex(const QString &key, bool on);
+    QString getAutoIndexStatus(const QString &appID);
+    void setAutoIndex(const QString &appID, bool on);
 signals:
-    void IndexStatus(const QStringList &files, int status, const QString &key);
-    void IndexDeleted(const QStringList &files, const QString &key);
+    void IndexStatus(const QString &appID, const QStringList &files, int status);
+    void IndexDeleted(const QString &appID, const QStringList &files);
 
+private:
+    EmbeddingWorker *ensureWorker(const QString &appID);
 protected:
     static QJsonObject embeddingApi(const QStringList &texts, void *user);
 
 private:
-    EmbeddingWorker *ew {nullptr};
     ModelhubWrapper *bgeModel = nullptr;
+    QMap<QString, EmbeddingWorker*> embeddingWorkerwManager;
+    QList<QString> m_whiteList;
 
     void init();
+    void initEmbeddingWorker(EmbeddingWorker *ew);
 };
 
 #endif // VECTORINDEXDBUS_H
