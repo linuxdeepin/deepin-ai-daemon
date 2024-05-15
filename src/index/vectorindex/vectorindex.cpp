@@ -26,15 +26,11 @@
 #include <faiss/IndexShards.h>
 #include <faiss/IndexFlatCodes.h>
 
-VectorIndex::VectorIndex(QObject *parent)
+VectorIndex::VectorIndex(QSqlDatabase *db, QMutex *mtx, QObject *parent)
     :QObject (parent)
+    , dataBase(db)
+    , dbMtx(mtx)
 {
-    init();
-}
-
-void VectorIndex::init()
-{
-    connect(this, &VectorIndex::indexDump, this, &VectorIndex::onIndexDump);
 }
 
 bool VectorIndex::updateIndex(int d, const QMap<faiss::idx_t, QVector<float>> &embedVectorCache, const QString &indexKey)
@@ -102,8 +98,11 @@ bool VectorIndex::saveIndexToFile(const faiss::Index *index, const QString &inde
         insertStrs << insert;
     }
 
-    QString query = "SELECT id FROM " + QString(kEmbeddingDBMetaDataTable) + " ORDER BY id DESC LIMIT 1";
-    EmbedDBManagerIns->commitTransaction(indexKey + ".db", insertStrs);
+    {
+        //QString query = "SELECT id FROM " + QString(kEmbeddingDBMetaDataTable) + " ORDER BY id DESC LIMIT 1";
+        QMutexLocker lk(dbMtx);
+        EmbedDBVendorIns->commitTransaction(dataBase, insertStrs);
+    }
 
     segmentIds.clear();
 
@@ -233,7 +232,7 @@ void VectorIndex::vectorSearch(int topK, const float *queryVector, const QString
     //TODO:检索结果后处理-去重、过于相近或远
 }
 
-void VectorIndex::onIndexDump(const QString &indexKey)
+void VectorIndex::doIndexDump(const QString &indexKey)
 {
     saveIndexToFile(flatIndexHash.value(indexKey), indexKey, kFaissFlatIndex);
 

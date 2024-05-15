@@ -7,164 +7,130 @@
 #include <QTimer>
 #include <QDebug>
 
-EmbedDataBase::EmbedDataBase(QObject *parent)
-    : QObject(parent)
+EmbedDBVendor *EmbedDBVendor::instance()
 {
-
-}
-
-void EmbedDataBase::init(const QString &databaseName)
-{
-    //打开数据库
-    QString databasePath = QStandardPaths::writableLocation(QStandardPaths::AppDataLocation) + QDir::separator() +  databaseName;
-    db = QSqlDatabase::addDatabase("QSQLITE");
-    db.setDatabaseName(databasePath);
-}
-
-bool EmbedDataBase::isEmbedDataTableExists(const QString &databaseName, const QString &tableName)
-{
-    QMutexLocker lk(&mtx);
-
-    init(databaseName);
-
-    QSqlQuery query(db);
-    query.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name=:tableName");
-    query.bindValue(":tableName", tableName);
-    if (!query.exec()) {
-        qDebug() << "Error executing query:" << query.lastError().text();
-        return false;
-    }
-    bool res = query.next();
-    close();
-
-    return res;
-}
-
-EmbedDataBase *EmbedDataBase::instance()
-{
-    static EmbedDataBase ins;
+    static EmbedDBVendor ins;
     return &ins;
 }
 
-bool EmbedDataBase::open()
+QSqlDatabase EmbedDBVendor::addDatabase(const QString &databasePath)
 {
-    if (!db.open()) {
+    //打开数据库
+    //QString databasePath = QStandardPaths::writableLocation(QStandardPaths::AppDataLocation) + QDir::separator() +  databaseName;
+    auto db = QSqlDatabase::addDatabase("QSQLITE");
+    db.setDatabaseName(databasePath);
+    return db;
+}
+
+bool EmbedDBVendor::executeQuery(QSqlDatabase *db, const QString &queryStr, QList<QVariantMap> &result)
+{
+    bool ret = false;
+
+    if (!openDB(db))
+        return ret;
+
+    QSqlQuery query(*db);
+    if (query.exec(queryStr)) {
+        while (query.next()) {
+            QVariantMap res;
+            res.insert("id", query.value(0));
+            res.insert("source", query.value(1));
+            res.insert("content", query.value(2));
+            result.push_back(res);
+        }
+        ret = true;
+    } else {
+        qDebug() << "Error executing query:" << query.lastError().text();
+    }
+
+    closeDB(db);
+    return ret;
+}
+
+bool EmbedDBVendor::executeQuery(QSqlDatabase *db, const QString &queryStr)
+{
+    bool ret = false;
+
+    if (!openDB(db))
+        return ret;
+
+    QSqlQuery query(*db);
+    if (query.exec(queryStr))
+        ret = true;
+    else
+        qWarning() << "Error executing query:" << query.lastError().text();
+
+    closeDB(db);
+    return ret;
+}
+
+bool EmbedDBVendor::commitTransaction(QSqlDatabase *db, const QStringList &queryList)
+{
+    bool ret = true;
+
+    if (!openDB(db))
+        return false;
+
+    QSqlQuery query(*db);
+    if (query.exec("BEGIN TRANSACTION")) {
+        for (const QString &queryStr : queryList) {
+            if (!query.exec(queryStr)) {
+                qWarning() << "Error executing query:" << query.lastError().text();
+                ret = false;
+                break;
+            }
+        }
+
+        if (ret) {
+            if (!query.exec("COMMIT")) {
+                qWarning() << "Failed to commit transaction" << db->databaseName();
+                ret= false;
+            }
+        }
+    } else {
+        qWarning() << "Failed to begin transaction" << db->databaseName();
+        ret = false;
+    }
+
+    closeDB(db);
+    return ret;
+}
+
+bool EmbedDBVendor::isEmbedDataTableExists(QSqlDatabase *db, const QString &tableName)
+{
+    bool ret = false;
+
+    if (!openDB(db))
+        return ret;
+
+    QSqlQuery query(*db);
+    query.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name=:tableName");
+    query.bindValue(":tableName", tableName);
+    ret = query.exec();
+    if (ret)
+        ret = query.next();
+    else
+        qWarning() << "Error executing query:" << query.lastError().text();
+
+    closeDB(db);
+    return ret;
+}
+
+bool EmbedDBVendor::openDB(QSqlDatabase *db)
+{
+    if (!(db->isOpen() || db->open())) {
         qDebug() << "Failed to open database";
         return false;
     }
-    qInfo() << "Openning DB Connected.";
     return true;
 }
 
-void EmbedDataBase::close()
+void EmbedDBVendor::closeDB(QSqlDatabase *db)
 {
-    db.close();
-    qInfo() << "Closing DB Connected";
+    db->close();
 }
 
-bool EmbedDataBase::executeQuery(const QString &databaseName, const QString &queryStr, QList<QVariantMap> &result)
+EmbedDBVendor::EmbedDBVendor()
 {
-    QMutexLocker lk(&mtx);
-    init(databaseName);
 
-    if (!open())
-        return false;
-
-    QSqlQuery query(db);
-    if (query.exec(queryStr)) {
-        while (query.next()) {
-            QVariantMap res;
-            res.insert("id", query.value(0));
-            res.insert("source", query.value(1));
-            res.insert("content", query.value(2));
-            result.push_back(res);
-        }
-        close();
-        return true;
-    } else {
-        qDebug() << "Error executing query:" << query.lastError().text();
-        close();
-        return false;
-    }
-}
-
-bool EmbedDataBase::executeQuery(const QString &databaseName, const QString &queryStr)
-{
-    QMutexLocker lk(&mtx);
-    init(databaseName);
-
-    if (!open())
-        return false;
-
-    QSqlQuery query(db);
-    if (query.exec(queryStr)) {
-        close();
-        return true;
-    } else {
-        qDebug() << "Error executing query:" << query.lastError().text();
-        close();
-        return false;
-    }
-}
-
-bool EmbedDataBase::commitTransaction(const QString &databaseName, const QStringList &queryList)
-{
-    QMutexLocker lk(&mtx);
-    init(databaseName);
-
-    if (!open())
-        return false;
-
-    qInfo() << db.tables();
-
-    QSqlQuery query(db);
-    if (!query.exec("BEGIN TRANSACTION")) {
-        qDebug() << "Failed to begin transaction";
-        close();
-        return false;
-    }
-    for (const QString &queryStr : queryList) {
-        if (!query.exec(queryStr)) {
-            qDebug() << "Error executing query:" << query.lastError().text();
-            close();
-            return false;
-        }
-    }
-    if (!query.exec("COMMIT")) {
-        qDebug() << "Failed to commit transaction";
-        close();
-        return 1;
-    }
-
-    close();
-
-    return true;
-}
-
-bool EmbedDataBase::executeQueryFromPath(const QString &databasePath, const QString &queryStr, QList<QVariantMap> &result)
-{
-    QMutexLocker lk(&mtx);
-
-    db = QSqlDatabase::addDatabase("QSQLITE");
-    db.setDatabaseName(databasePath);
-
-    if (!open())
-        return false;
-
-    QSqlQuery query(db);
-    if (query.exec(queryStr)) {
-        while (query.next()) {
-            QVariantMap res;
-            res.insert("id", query.value(0));
-            res.insert("source", query.value(1));
-            res.insert("content", query.value(2));
-            result.push_back(res);
-        }
-        close();
-        return true;
-    } else {
-        qDebug() << "Error executing query:" << query.lastError().text();
-        close();
-        return false;
-    }
 }

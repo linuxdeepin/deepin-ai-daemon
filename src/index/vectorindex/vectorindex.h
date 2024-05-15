@@ -10,6 +10,9 @@
 #include <QStandardPaths>
 #include <QVector>
 
+#include <QSqlDatabase>
+#include <QMutex>
+
 #include <faiss/Index.h>
 #include <faiss/IndexFlat.h>
 #include <faiss/IndexIDMap.h>
@@ -19,9 +22,7 @@ class VectorIndex : public QObject
     Q_OBJECT
 
 public:
-    explicit VectorIndex(QObject *parent = nullptr);
-    void init();
-
+    explicit VectorIndex(QSqlDatabase *db, QMutex *mtx, QObject *parent = nullptr);
     bool updateIndex(int d, const QMap<faiss::idx_t, QVector<float>> &embedVectorCache, const QString &indexKey);
     bool saveIndexToFile(const faiss::Index *index, const QString &indexKey, const QString &indexType="All");
 
@@ -40,12 +41,9 @@ public:
         return workerDir;
     }
 
+    void doIndexDump(const QString &indexKey);
 signals:
     void indexDump(const QString &indexKey);
-
-private slots:
-    void onIndexDump(const QString &indexKey);
-
 private:
     void removeDupIndex(const faiss::Index *index, int topK, int DupK, QVector<faiss::idx_t> &nonDupIndex,
                         const float *queryVector, QMap<float, bool> &seen);
@@ -54,6 +52,9 @@ private:
 
     QHash<QString, faiss::IndexIDMap*> flatIndexHash;
     QVector<faiss::idx_t> segmentIds;
+
+    QSqlDatabase *dataBase = nullptr;
+    QMutex *dbMtx = nullptr;
 };
 
 #endif // VECTORINDEX_H

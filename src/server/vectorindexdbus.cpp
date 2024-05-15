@@ -28,7 +28,7 @@ VectorIndexDBus::VectorIndexDBus(QObject *parent) : QObject(parent)
 
 VectorIndexDBus::~VectorIndexDBus()
 {
-    for (auto it : embeddingWorkerwManager) {
+    for (auto it : embeddingWorkerwManager.values()) {
         delete it;
         it = nullptr;
     }
@@ -41,7 +41,9 @@ bool VectorIndexDBus::Create(const QString &appID, const QStringList &files)
     if (!embeddingWorker)
         return false;
 
-    return embeddingWorker->doCreateIndex(files, appID);
+    // run in thread
+    QMetaObject::invokeMethod(embeddingWorker, "doCreateIndex", Q_ARG(QStringList, files));
+    return true;
 }
 
 bool VectorIndexDBus::Delete(const QString &appID, const QStringList &files)
@@ -51,7 +53,9 @@ bool VectorIndexDBus::Delete(const QString &appID, const QStringList &files)
     if (!embeddingWorker)
         return false;
 
-    return embeddingWorker->doDeleteIndex(files, appID);
+    // run in thread
+    QMetaObject::invokeMethod(embeddingWorker, "doDeleteIndex", Q_ARG(QStringList, files));
+    return false;
 }
 
 bool VectorIndexDBus::Enable()
@@ -66,17 +70,16 @@ QStringList VectorIndexDBus::DocFiles(const QString &appID)
     if (!embeddingWorker)
         return {};
 
-    return embeddingWorker->getDocFile(appID);
+    return embeddingWorker->getDocFile();
 }
 
 QString VectorIndexDBus::Search(const QString &appID, const QString &query, int topK)
 {
-    qInfo() << "Index Search!";
     EmbeddingWorker *embeddingWorker = ensureWorker(appID);
     if (!embeddingWorker)
         return "";
 
-    return embeddingWorker->doVectorSearch(query, appID, topK);;
+    return embeddingWorker->doVectorSearch(query, topK);;
 }
 
 QString VectorIndexDBus::getAutoIndexStatus(const QString &appID)
@@ -89,13 +92,6 @@ QString VectorIndexDBus::getAutoIndexStatus(const QString &appID)
     if (!on)
         return R"({"enable":false})";
 
-    //
-//    { enabel:true,
-//      completion: 0 正在创建，1创建好了，-1创建失败
-//      if 1
-//        updatedtime: unix 时间戳 秒
-
-//    }
     QVariantHash hash;
     hash.insert("enable", true);
     int st = embeddingWorker->createAllState() == EmbeddingWorker::Creating ? 0 : 1;
@@ -119,6 +115,9 @@ QString VectorIndexDBus::getAutoIndexStatus(const QString &appID)
 
 void VectorIndexDBus::setAutoIndex(const QString &appID, bool on)
 {
+    if (appID != kGrandVectorSearch)
+        return;
+
     EmbeddingWorker *embeddingWorker = ensureWorker(appID);
     if (!embeddingWorker)
         return;
@@ -126,12 +125,15 @@ void VectorIndexDBus::setAutoIndex(const QString &appID, bool on)
     ConfigManagerIns->setValue(AUTO_INDEX_GROUP, appID + "." + AUTO_INDEX_STATUS, on);
     if (on) {
         embeddingWorker->setWatch(false);
-        embeddingWorker->onCreateAllIndex();
+        // run in thread
+        QMetaObject::invokeMethod(embeddingWorker, "onCreateAllIndex");
+
         embeddingWorker->setWatch(true);
     } else {
-        embeddingWorker->stop(kGrandVectorSearch);
+        embeddingWorker->stop();
         embeddingWorker->setWatch(false);
     }
+    qDebug() << "setAutoIndex" << appID << on;
 }
 
 void VectorIndexDBus::saveAllIndex(const QString &appID)
@@ -139,14 +141,14 @@ void VectorIndexDBus::saveAllIndex(const QString &appID)
     EmbeddingWorker *embeddingWorker = ensureWorker(appID);
     if (!embeddingWorker)
         return;
-    Q_EMIT embeddingWorker->saveAllIndex(appID);
+    embeddingWorker->saveAllIndex();
 }
 
 EmbeddingWorker *VectorIndexDBus::ensureWorker(const QString &appID)
 {
     EmbeddingWorker *worker = embeddingWorkerwManager.value(appID);
     if (m_whiteList.contains(appID) && !worker) {
-        worker = new EmbeddingWorker(this);
+        worker = new EmbeddingWorker(appID);
         initEmbeddingWorker(worker);
         embeddingWorkerwManager.insert(appID, worker);
     }

@@ -11,6 +11,8 @@
 #include <QHash>
 #include <QMap>
 #include <QStandardPaths>
+#include <QSqlDatabase>
+#include <QMutex>
 
 #include <faiss/Index.h>
 
@@ -20,17 +22,18 @@ class Embedding : public QObject
 {
     Q_OBJECT
 public:
-    explicit Embedding(QObject *parent = nullptr);
+    explicit Embedding(QSqlDatabase *db, QMutex *mtx, QObject *parent = nullptr);
 
     bool embeddingDocument(const QString &docFilePath, const QString &key);
     QVector<QVector<float>> embeddingTexts(const QStringList &texts);
     void embeddingQuery(const QString &query, QVector<float> &queryVector);
 
+
     //DB operate
-    bool clearAllDBTable(const QString &key);
+    //bool clearAllDBTable(const QString &key);
     bool batchInsertDataToDB(const QStringList &inserQuery, const QString &key);
-    int getDBLastID(const QString &key);
-    void createEmbedDataTable(const QString &key);
+    int getDBLastID();
+    void createEmbedDataTable();
     bool isDupDocument(const QString &key, const QString &docFilePath);
 
     void embeddingClear();
@@ -48,12 +51,10 @@ public:
     }
 
     void deleteCacheIndex(const QStringList &files);
+    void doIndexDump(const QString &key);
 public slots:
     void onIndexCreateSuccess(const QString &key);
-    void onIndexDump(const QString &key);
-
 private:
-    void init();
     QStringList textsSpliter(QString &texts);
 
     embeddingApi onHttpEmbedding = nullptr;
@@ -68,6 +69,9 @@ private:
     //QHash<faiss::idx_t, QString> dataCache;
     QMap<faiss::idx_t, QPair<QString, QString>> embedDataCache;
     QMap<faiss::idx_t, QVector<float>> embedVectorCache;
+
+    QSqlDatabase *dataBase = nullptr;
+    QMutex *dbMtx = nullptr;
 };
 
 #endif // EMBEDDING_H
