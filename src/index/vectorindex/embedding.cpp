@@ -225,16 +225,17 @@ QStringList Embedding::textsSpliter(QString &texts)
     QStringList chunks;
     QStringList splitTexts;
 
-    QString splitPattern = "。";
-    texts.replace("\n", "");
-    QRegularExpression regex(splitPattern);
-    //QRegularExpression regex("END");
-    splitTexts = texts.split(regex, QString::SplitBehavior::SkipEmptyParts);
+    QRegularExpression regexSplit("[\n，；。,.]");
+    QRegularExpression regexInvalidChar("[\\s\u200B]+");
+    texts.replace(regexInvalidChar, " ");
+    texts.replace("'", "\""); //SQL语句有单引号会报错
+
+    splitTexts = texts.split(regexSplit, QString::SplitBehavior::SkipEmptyParts);
 
     int chunkSize = 0;
     QString chunk = "";
     for (auto text : splitTexts) {
-        text += splitPattern;
+        text += " ";
         chunkSize += text.size();
         if (chunkSize > kMaxChunksSize) {
             if (!chunk.isEmpty())
