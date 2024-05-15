@@ -35,6 +35,7 @@ static constexpr char kFaissIvfPQIndex[] { "IvfPQ" };
 
 //embedding define
 static constexpr int kMaxChunksSize = 300;
+static constexpr int kMinChunksSize = 200;
 
 //文档分块后的存储结构
 struct Document {

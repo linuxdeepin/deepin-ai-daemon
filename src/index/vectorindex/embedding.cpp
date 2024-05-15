@@ -74,8 +74,6 @@ bool Embedding::embeddingDocument(const QString &docFilePath, const QString &key
         embedDataCache.insert(continueID, QPair<QString, QString>(docFilePath, chunks[i]));
         embedVectorCache.insert(continueID, vectors[i]);
 
-        qInfo() << ">>>>>>>>><<<<<<<" <<embedDataCache.keys();
-
         continueID += 1;
     }
     return true;
@@ -86,17 +84,24 @@ QVector<QVector<float>> Embedding::embeddingTexts(const QStringList &texts)
     if (texts.isEmpty())
         return {};
 
-    QJsonObject emdObject = onHttpEmbedding(texts, apiData);
-
+    int maxInput = 5;
     QVector<QVector<float>> vectors;
-    QJsonArray embeddingsArray = emdObject["embedding"].toArray();
-    for(auto embeddingObject : embeddingsArray) {
-        QJsonArray vectorArray = embeddingObject.toObject()["embedding"].toArray();
-        QVector<float> vectorTmp;
-        for (auto value : vectorArray) {
-            vectorTmp << static_cast<float>(value.toDouble());
+    QStringList splitProcessText = texts;
+    int currentIndex = 0;
+    while (currentIndex < splitProcessText.size()) {
+        QStringList subList = splitProcessText.mid(currentIndex, maxInput);
+        currentIndex += maxInput;
+
+        QJsonObject emdObject = onHttpEmbedding(subList, apiData);
+        QJsonArray embeddingsArray = emdObject["embedding"].toArray();
+        for(auto embeddingObject : embeddingsArray) {
+            QJsonArray vectorArray = embeddingObject.toObject()["embedding"].toArray();
+            QVector<float> vectorTmp;
+            for (auto value : vectorArray) {
+                vectorTmp << static_cast<float>(value.toDouble());
+            }
+            vectors << vectorTmp;
         }
-        vectors << vectorTmp;
     }
     return vectors;
 }
@@ -236,24 +241,46 @@ QStringList Embedding::textsSpliter(QString &texts)
 
     splitTexts = texts.split(regexSplit, QString::SplitBehavior::SkipEmptyParts);
 
-    int chunkSize = 0;
-    QString chunk = "";
+    QString over = "";
     for (auto text : splitTexts) {
-        text += " ";
-        chunkSize += text.size();
-        if (chunkSize > kMaxChunksSize) {
-            if (!chunk.isEmpty())
-                chunks << chunk;
-            chunk = text;
-            chunkSize = 0;
+        text += over;
+        over = "";
+
+        if (text.length() > kMaxChunksSize) {
+            textsSplitSize(text, chunks, over);
+        } else if (text.length() > kMinChunksSize && text.length() < kMaxChunksSize) {
+            chunks << text;
         } else {
-            chunk += text;
+            over += text;
         }
     }
-    if (!chunk.isEmpty())
-        chunks << chunk;
+
+    if (over.length() > kMinChunksSize)
+        chunks << over;
+    else {
+        if (chunks.isEmpty())
+            chunks << over;
+        else
+            chunks.last() += over;
+    }
 
     return chunks;
+}
+
+void Embedding::textsSplitSize(const QString &text, QStringList &splits, QString &over, int pos)
+{
+    if (pos >= text.length()) {
+        return;
+    }
+
+    QString part = text.mid(pos, kMaxChunksSize);
+
+    if (part.length() < kMaxChunksSize) {
+        over += part;
+        return;
+    }
+    splits << part;
+    textsSplitSize(text, splits, over, pos + kMaxChunksSize);
 }
 
 QString Embedding::loadTextsFromSearch(const QString &indexKey, int topK,
@@ -296,12 +323,12 @@ QString Embedding::loadTextsFromSearch(const QString &indexKey, int topK,
     int j = 0;
 
     while (i < cacheSearchRes.size() && j < dumpSearchRes.size()) {
-        if (sort == topK)
+        if (sort > topK)
             break;
 
         auto cacheIt = cacheSearchRes.begin() + i;
         auto dumpIt = dumpSearchRes.begin() + j;
-        if (cacheIt.key() > dumpIt.key()) {
+        if (cacheIt.key() < dumpIt.key()) {
             QString source = embedDataCache[cacheIt.value()].first;
             QString content = embedDataCache[cacheIt.value()].second;
             QJsonObject obj;
@@ -315,7 +342,7 @@ QString Embedding::loadTextsFromSearch(const QString &indexKey, int topK,
             QList<QVariantMap> result;
 
             {
-                QString query = "SELECT * FROM " + QString(kEmbeddingDBMetaDataTable) + " WHERE id IN " + QString::number(id);
+                QString query = "SELECT * FROM " + QString(kEmbeddingDBMetaDataTable) + " WHERE id = " + QString::number(id);
                 QMutexLocker lk(dbMtx);
                 EmbedDBVendorIns->executeQuery(dataBase, query, result);
             }
@@ -338,7 +365,7 @@ QString Embedding::loadTextsFromSearch(const QString &indexKey, int topK,
     }
 
     while (i < cacheSearchRes.size()) {
-        if (sort == topK)
+        if (sort > topK)
             break;
 
         auto cacheIt = cacheSearchRes.begin() + i;
@@ -353,7 +380,7 @@ QString Embedding::loadTextsFromSearch(const QString &indexKey, int topK,
     }
 
     while (j < dumpSearchRes.size()) {
-        if (sort == topK)
+        if (sort > topK)
             break;
 
         auto dumpIt = dumpSearchRes.begin() + j;

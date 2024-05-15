@@ -44,16 +44,18 @@ bool VectorIndex::updateIndex(int d, const QMap<faiss::idx_t, QVector<float>> &e
         flatIndexHash.insert(indexKey, flatIndexIDMap);
     }
     faiss::IndexIDMap *flatIndexIDMapTmp = flatIndexHash.value(indexKey);
+    flatIndexIDMapTmp->reset();
 
     int oldNTotal = flatIndexIDMapTmp->ntotal;
     QVector<float> embeddingsTmp;
     QVector<faiss::idx_t> idsTmp;
-    for (faiss::idx_t i = oldNTotal; i < embedVectorCache.keys().count(); i++) {
-        embeddingsTmp += embedVectorCache.value(i);
-        idsTmp << i;
+    for (const faiss::idx_t &id : embedVectorCache.keys()) {
+        embeddingsTmp += embedVectorCache.value(id);
+        idsTmp << id;
     }
 
-    flatIndexIDMapTmp->add_with_ids(embedVectorCache.count() - oldNTotal, embeddingsTmp.data(), idsTmp.data());
+    qInfo() << "***" << embedVectorCache.size() << idsTmp;
+    flatIndexIDMapTmp->add_with_ids(embedVectorCache.size(), embeddingsTmp.data(), idsTmp.data());
     int newNTotal = flatIndexIDMapTmp->ntotal;
 
     qInfo() << "old total" << oldNTotal;
@@ -73,7 +75,6 @@ bool VectorIndex::saveIndexToFile(const faiss::Index *index, const QString &inde
     if (!index || index->ntotal == 0) {
         return false;
     }
-
     qInfo() << "save faiss index...";
     QString indexDirStr = workerDir() + QDir::separator() + indexKey;
     QDir indexDir(indexDirStr);
@@ -183,7 +184,8 @@ void VectorIndex::vectorSearch(int topK, const float *queryVector, const QString
     if (flatIndexHash.contains(indexKey)) {
         faiss::Index *index = flatIndexHash.value(indexKey);
         index->search(1, queryVector, topK, D1Cache.data(), I1Cache.data());
-    }
+        qInfo() << "cache search result***: " << I1Cache << D1Cache;
+    }    
 
     for (int i = 0; i < topK; i++) {
         if (I1Cache[i] == -1 || D1Cache[i] == 0.f)
@@ -226,6 +228,7 @@ void VectorIndex::vectorSearch(int topK, const float *queryVector, const QString
                 break;
             dumpSearchRes.insert(D1[id], I1[id]);
         }
+        qInfo() << "dump search result***: " << I1 << D1;
     }
 
     //检索结果处理
@@ -235,8 +238,7 @@ void VectorIndex::vectorSearch(int topK, const float *queryVector, const QString
 void VectorIndex::doIndexDump(const QString &indexKey)
 {
     saveIndexToFile(flatIndexHash.value(indexKey), indexKey, kFaissFlatIndex);
-
-    flatIndexHash.remove(indexKey);
+    flatIndexHash.value(indexKey)->reset();
 }
 
 void VectorIndex::removeDupIndex(const faiss::Index *index, int topK, int DupK, QVector<faiss::idx_t> &nonDupIndex,
