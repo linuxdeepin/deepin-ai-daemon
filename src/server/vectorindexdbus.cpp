@@ -21,6 +21,8 @@
 VectorIndexDBus::VectorIndexDBus(QObject *parent) : QObject(parent)
 {
     m_whiteList << kGrandVectorSearch;
+    m_whiteList << "uos-ai-assistant";
+    m_whiteList << kSystemAssistantKey;
     init();
 }
 
@@ -130,6 +132,14 @@ void VectorIndexDBus::setAutoIndex(const QString &appID, bool on)
         embeddingWorker->stop(kGrandVectorSearch);
         embeddingWorker->setWatch(false);
     }
+}
+
+void VectorIndexDBus::saveAllIndex(const QString &appID)
+{
+    EmbeddingWorker *embeddingWorker = ensureWorker(appID);
+    if (!embeddingWorker)
+        return;
+    Q_EMIT embeddingWorker->saveAllIndex(appID);
 }
 
 EmbeddingWorker *VectorIndexDBus::ensureWorker(const QString &appID)

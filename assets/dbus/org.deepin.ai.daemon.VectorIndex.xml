@@ -33,6 +33,9 @@
     <method name="Enable">
       <arg type="b" direction="out"/>
     </method>
+    <method name="saveAllIndex">
+      <arg name="appID" type="s" direction="in"/>    
+    </method>
     <method name="setAutoIndex">
       <arg name="appID" type="s" direction="in"/>
       <arg name="on" type="b" direction="in"/>

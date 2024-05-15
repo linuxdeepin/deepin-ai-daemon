@@ -35,6 +35,9 @@ public Q_SLOTS:
 
     QString getAutoIndexStatus(const QString &appID);
     void setAutoIndex(const QString &appID, bool on);
+
+    void saveAllIndex(const QString &appID);
+
 signals:
     void IndexStatus(const QString &appID, const QStringList &files, int status);
     void IndexDeleted(const QString &appID, const QStringList &files);

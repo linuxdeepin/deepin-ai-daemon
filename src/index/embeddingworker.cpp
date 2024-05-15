@@ -222,6 +222,11 @@ void EmbeddingWorker::stop(const QString &key)
     Q_EMIT stopEmbedding(key);
 }
 
+void EmbeddingWorker::saveAllIndex(const QString &key)
+{
+    Q_EMIT stopEmbedding(key);
+}
+
 EmbeddingWorker::IndexCreateStatus EmbeddingWorker::createAllState()
 {
     return  d->m_creatingAll ? Creating : Success;
@@ -258,12 +263,13 @@ bool EmbeddingWorker::doCreateIndex(const QStringList &files, const QString &key
         return d->updateIndex(files, key);
     });
     QFutureWatcher<bool> *futureWatcher = new QFutureWatcher<bool>(this);
-    QObject::connect(futureWatcher, &QFutureWatcher<QString>::finished, [futureWatcher, this](){
+    QObject::connect(futureWatcher, &QFutureWatcher<QString>::finished, [futureWatcher, key, files, this](){
         if (futureWatcher->future().result()) {
             qInfo() << "Index update Success";
-            //Q_EMIT indexCreateSuccess(kGrandVectorSearch);
+            Q_EMIT statusChanged(key, files, Success);
         } else {
             qInfo() << "Index update Failed";
+            Q_EMIT statusChanged(key, files, Failed);
         }
         futureWatcher->deleteLater();
     });
@@ -285,10 +291,10 @@ bool EmbeddingWorker::doDeleteIndex(const QStringList &files, const QString &key
         return d->deleteIndex(files, key);
     });
     QFutureWatcher<bool> *futureWatcher = new QFutureWatcher<bool>(this);
-    QObject::connect(futureWatcher, &QFutureWatcher<QString>::finished, [futureWatcher, this](){
+    QObject::connect(futureWatcher, &QFutureWatcher<QString>::finished, [futureWatcher, key, files, this](){
         if (futureWatcher->future().result()) {
             qInfo() << "Index update Success";
-            //Q_EMIT indexCreateSuccess(kGrandVectorSearch);
+            Q_EMIT indexDeleted(key, files);
         } else {
             qInfo() << "Index update Failed";
         }
