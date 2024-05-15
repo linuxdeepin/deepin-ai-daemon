@@ -56,6 +56,7 @@ public slots:
     void onIndexCreateSuccess(const QString &key);
 private:
     QStringList textsSpliter(QString &texts);
+    void textsSplitSize(const QString &text, QStringList &splits, QString &over, int pos = 0);
 
     embeddingApi onHttpEmbedding = nullptr;
     void *apiData = nullptr;

@@ -83,9 +83,12 @@ bool EmbeddingWorkerPrivate::updateIndex(const QStringList &files)
 {
     embedder->createEmbedDataTable();
 
-    bool embedRes = false;
+    if (files.isEmpty())
+        return false;
+
+    bool embedRes = true;
     for (const QString &embeddingfile : files) {
-        embedRes = embedder->embeddingDocument(embeddingfile, indexKey);
+        embedRes &= embedder->embeddingDocument(embeddingfile, indexKey);
     }
     bool updateResult = indexer->updateIndex(EmbeddingDim, embedder->getEmbedVectorCache(), indexKey);
 
