@@ -10,32 +10,23 @@
 #include <QtSql>
 #include <QMutex>
 
-#define EmbedDBManagerIns EmbedDataBase::instance()
+#define EmbedDBVendorIns EmbedDBVendor::instance()
 
-class EmbedDataBase : public QObject
+class EmbedDBVendor
 {
-    Q_OBJECT
 public:
-    static EmbedDataBase *instance();
-
-    bool executeQuery(const QString &databaseName, const QString &queryStr, QList<QVariantMap> &result);
-    bool executeQuery(const QString &databaseName, const QString &queryStr);
-    bool commitTransaction(const QString &databaseName, const QStringList &queryList);
-
-    bool executeQueryFromPath(const QString &databasePath, const QString &queryStr, QList<QVariantMap> &result);
-
-    bool isEmbedDataTableExists(const QString &databaseName, const QString &tableName);
-
+    static EmbedDBVendor *instance();
+    QSqlDatabase addDatabase(const QString &databasePath);
+    bool executeQuery(QSqlDatabase *db, const QString &queryStr, QList<QVariantMap> &result);
+    bool executeQuery(QSqlDatabase *db, const QString &queryStr);
+    bool commitTransaction(QSqlDatabase *db, const QStringList &queryList);
+    bool isEmbedDataTableExists(QSqlDatabase *db, const QString &tableName);
+protected:
+    bool openDB(QSqlDatabase *db);
+    void closeDB(QSqlDatabase *db);
 private:
-    explicit EmbedDataBase(QObject *parent = nullptr);
+    explicit EmbedDBVendor();
 
-private:
-    QSqlDatabase db;
-    QMutex mtx;
-
-    void init(const QString &databaseName);
-    bool open();
-    void close();
 };
 
 #endif // EMBEDDATABASE_H

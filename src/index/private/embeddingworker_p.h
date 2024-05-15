@@ -10,7 +10,9 @@
 
 #include <QObject>
 #include <QStandardPaths>
-#include <QtConcurrent/QtConcurrent>
+#include <QSqlDatabase>
+#include <QMutex>
+#include <QThread>
 
 class EmbeddingWorkerPrivate : public QObject
 {
@@ -34,15 +36,12 @@ public:
     }
     QStringList embeddingPaths();
 
-    bool createSystemAssistantIndex(const QString &indexKey);
-    bool createAllIndex(const QStringList &files, const QString &indexKey);
-    bool updateIndex(const QStringList &files, const QString &indexKey);
-    bool deleteIndex(const QStringList &files, const QString &indexKey);
-    QString vectorSearch(const QString &query, const QString &key, int topK);
+    bool updateIndex(const QStringList &files);
+    bool deleteIndex(const QStringList &files);
+    QString vectorSearch(const QString &query, int topK);
 
-    bool isIndexExists(const QString &indexKey);
-    QString indexDir(const QString &indexKey);
-    QStringList getIndexDocs(const QString &indexKey);
+    QString indexDir();
+    QStringList getIndexDocs();
 
     bool isSupportDoc(const QString &file);
 
@@ -50,6 +49,12 @@ public:
     VectorIndex *indexer {nullptr};
 
     bool m_creatingAll = false;
+
+    QString indexKey;
+    QThread workThread;
+
+    QSqlDatabase dataBase;
+    QMutex dbMtx;
 };
 
 #endif // VECTORWORKER_P_H

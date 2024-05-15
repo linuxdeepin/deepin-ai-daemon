@@ -18,10 +18,13 @@
 
 #include <docparser.h>
 
-Embedding::Embedding(QObject *parent)
+Embedding::Embedding(QSqlDatabase *db, QMutex *mtx, QObject *parent)
     : QObject(parent)
+    , dataBase(db)
+    , dbMtx(mtx)
 {
-    init();
+    Q_ASSERT(db);
+    Q_ASSERT(mtx);
 }
 
 bool Embedding::embeddingDocument(const QString &docFilePath, const QString &key)
@@ -57,7 +60,7 @@ bool Embedding::embeddingDocument(const QString &docFilePath, const QString &key
         return false;
 
     //元数据、文本存储
-    int continueID = embedDataCache.size() + getDBLastID(key);
+    int continueID = embedDataCache.size() + getDBLastID();
     qInfo() << "-------------" << continueID;
 
     for (int i = 0; i < chunks.count(); i++) {
@@ -122,6 +125,7 @@ void Embedding::embeddingQuery(const QString &query, QVector<float> &queryVector
     }
 }
 
+/*
 bool Embedding::clearAllDBTable(const QString &key)
 {
     //重置Table [embedding_metadata]
@@ -132,53 +136,58 @@ bool Embedding::clearAllDBTable(const QString &key)
     });
     return ok;
 }
+*/
 
 bool Embedding::batchInsertDataToDB(const QStringList &inserQuery, const QString &key)
 {
-    bool ok;
     if (inserQuery.isEmpty())
         return false;
-    QFuture<void> future = QtConcurrent::run([key, &ok, inserQuery](){
-        ok = EmbedDBManagerIns->commitTransaction(key + ".db", inserQuery);
-    });
-    future.waitForFinished();
+
+    QMutexLocker lk(dbMtx);
+    bool ok = EmbedDBVendorIns->commitTransaction(dataBase, inserQuery);
     return ok;
 }
 
-int Embedding::getDBLastID(const QString &key)
+int Embedding::getDBLastID()
 {
     QList<QVariantMap> result;
-    QFuture<void> future =  QtConcurrent::run([key, &result](){
+
+    {
         QString query = "SELECT id FROM " + QString(kEmbeddingDBMetaDataTable) + " ORDER BY id DESC LIMIT 1";
-        return EmbedDBManagerIns->executeQuery(key + ".db", query, result);
-    });
-    future.waitForFinished();
+        QMutexLocker lk(dbMtx);
+        EmbedDBVendorIns->executeQuery(dataBase, query, result);
+    }
+
     if (result.isEmpty() || !result[0]["id"].isValid())
         return 0;
     return result[0]["id"].toInt() + 1;
 }
 
-void Embedding::createEmbedDataTable(const QString &key)
+void Embedding::createEmbedDataTable()
 {
     qInfo() << "create DB table *****";
 
     QString createTable1SQL = "CREATE TABLE IF NOT EXISTS " + QString(kEmbeddingDBMetaDataTable) + " (id INTEGER PRIMARY KEY, source TEXT, content TEXT)";
     QString createTable2SQL = "CREATE TABLE IF NOT EXISTS " + QString(kEmbeddingDBIndexSegTable) + " (id INTEGER PRIMARY KEY, deleteBit INTEGER, content TEXT)";
-    EmbedDBManagerIns->executeQuery(key + ".db", createTable1SQL);
-    EmbedDBManagerIns->executeQuery(key + ".db", createTable2SQL);
+
+    QMutexLocker lk(dbMtx);
+    EmbedDBVendorIns->executeQuery(dataBase, createTable1SQL);
+    EmbedDBVendorIns->executeQuery(dataBase, createTable2SQL);
     return ;
 }
 
 bool Embedding::isDupDocument(const QString &key, const QString &docFilePath)
 {
     QList<QVariantMap> result;
-    QFuture<void> future =  QtConcurrent::run([key, docFilePath, &result](){
-        QString query = "SELECT CASE WHEN EXISTS (SELECT 1 FROM " + QString(kEmbeddingDBMetaDataTable)
-                + " WHERE source = '" + docFilePath + "') THEN 1 ELSE 0 END";
-        return EmbedDBManagerIns->executeQuery(key + ".db", query, result);
-    });
 
-    future.waitForFinished();
+    QString query = "SELECT CASE WHEN EXISTS (SELECT 1 FROM " + QString(kEmbeddingDBMetaDataTable)
+            + " WHERE source = '" + docFilePath + "') THEN 1 ELSE 0 END";
+
+    {
+        QMutexLocker lk(dbMtx);
+        EmbedDBVendorIns->executeQuery(dataBase, query, result);
+    }
+
     if (result.isEmpty() || !result[0]["id"].isValid())
         return 0;
     return result[0]["id"].toBool();
@@ -213,11 +222,6 @@ QMap<faiss::idx_t, QVector<float> > Embedding::getEmbedVectorCache()
 QMap<faiss::idx_t, QPair<QString, QString> > Embedding::getEmbedDataCache()
 {
     return embedDataCache;
-}
-
-void Embedding::init()
-{
-    //connect(this, &Embedding::embeddinged, vectorIndex, &VectorIndex::onEmbeddinged);
 }
 
 QStringList Embedding::textsSpliter(QString &texts)
@@ -263,11 +267,13 @@ QString Embedding::loadTextsFromSearch(const QString &indexKey, int topK,
         for (auto dumpIt : dumpSearchRes.keys()) {
             faiss::idx_t id = dumpSearchRes.value(dumpIt);
             QList<QVariantMap> result;
-            QFuture<void> future =  QtConcurrent::run([id, &result](){
-                QString query = "SELECT * FROM " + QString(kEmbeddingDBMetaDataTable) + " WHERE id = " + QString::number(id);
-                return EmbedDBManagerIns->executeQueryFromPath(QString(kSystemAssistantData) + ".db", query, result);
-            });
-            future.waitForFinished();
+
+            QString query = "SELECT * FROM " + QString(kEmbeddingDBMetaDataTable) + " WHERE id = " + QString::number(id);
+            {
+                QMutexLocker lk(dbMtx);
+                EmbedDBVendorIns->executeQuery(dataBase, query, result);
+            }
+
             if (result.isEmpty()) {
                 return {};
             }
@@ -307,11 +313,13 @@ QString Embedding::loadTextsFromSearch(const QString &indexKey, int topK,
         } else {
             faiss::idx_t id = dumpIt.value();
             QList<QVariantMap> result;
-            QFuture<void> future =  QtConcurrent::run([indexKey, id, &result](){
+
+            {
                 QString query = "SELECT * FROM " + QString(kEmbeddingDBMetaDataTable) + " WHERE id IN " + QString::number(id);
-                return EmbedDBManagerIns->executeQuery(indexKey + ".db", query, result);
-            });
-            future.waitForFinished();
+                QMutexLocker lk(dbMtx);
+                EmbedDBVendorIns->executeQuery(dataBase, query, result);
+            }
+
             if (result.isEmpty()) {
                 j++;
                 continue;
@@ -351,11 +359,11 @@ QString Embedding::loadTextsFromSearch(const QString &indexKey, int topK,
         auto dumpIt = dumpSearchRes.begin() + j;
         faiss::idx_t id = dumpIt.value();
         QList<QVariantMap> result;
-        QFuture<void> future =  QtConcurrent::run([indexKey, id, &result](){
+        {
             QString query = "SELECT * FROM " + QString(kEmbeddingDBMetaDataTable) + " WHERE id = " + QString::number(id);
-            return EmbedDBManagerIns->executeQuery(indexKey + ".db", query, result);
-        });
-        future.waitForFinished();
+            QMutexLocker lk(dbMtx);
+            EmbedDBVendorIns->executeQuery(dataBase, query, result);
+        }
         if (result.isEmpty()) {
             j++;
             continue;
@@ -395,7 +403,7 @@ void Embedding::onIndexCreateSuccess(const QString &key)
 
 }
 
-void Embedding::onIndexDump(const QString &key)
+void Embedding::doIndexDump(const QString &key)
 {
     //插入源信息
     QStringList insertSqlstrs;
@@ -404,8 +412,12 @@ void Embedding::onIndexDump(const QString &key)
                 + QString::number(id) + ", '" + embedDataCache.value(id).first + "', " + "'" + embedDataCache.value(id).second + "')";
         insertSqlstrs << queryStr;
     }
+
+    if (insertSqlstrs.isEmpty())
+        return;
+
     if (!batchInsertDataToDB(insertSqlstrs, key)) {
-        qWarning() << "Insert DB failed.";
+        qWarning() << "Insert DB failed." << key;
     }
 
     embeddingClear();
