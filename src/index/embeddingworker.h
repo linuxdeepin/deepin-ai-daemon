@@ -21,6 +21,8 @@ public:
     void setEmbeddingApi(embeddingApi api, void *user);
     void stop(const QString &key);
 
+    void saveAllIndex(const QString &key);
+
     enum IndexCreateStatus {
         Failed = 0,
         Success = 1,

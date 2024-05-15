@@ -65,7 +65,7 @@ bool VectorIndex::updateIndex(int d, const QMap<faiss::idx_t, QVector<float>> &e
 
     segmentIds += idsTmp;   //每个segment的索引所对应的IDs
 
-    if (flatIndexIDMapTmp->ntotal >= 3) {
+    if (flatIndexIDMapTmp->ntotal >= 100) {
         // UOS-AI添加文档后在内存中，与已经落盘的区分开，手动操作落盘；整理索引碎片等操作。
         Q_EMIT indexDump(indexKey);
     }
@@ -143,7 +143,7 @@ void VectorIndex::resetCacheIndex(int d, const QMap<faiss::idx_t, QVector<float>
     segmentIds += idsTmp;   //每个segment的索引所对应的IDs
 
 
-    if (flatIndexIDMapTmp->ntotal >= 3) {
+    if (flatIndexIDMapTmp->ntotal >= 100) {
         // UOS-AI添加文档后在内存中，与已经落盘的区分开，手动操作落盘；整理索引碎片等操作。
         Q_EMIT indexDump(indexKey);
     }
