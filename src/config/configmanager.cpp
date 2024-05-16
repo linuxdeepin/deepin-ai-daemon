@@ -151,6 +151,8 @@ void ConfigManager::loadConfig()
 
 void ConfigManager::setValue(const QString &group, const QString &key, bool value)
 {
+    d->setValue(group, key, value);
+
     QSettings set(d->configPath, QSettings::IniFormat);
     set.beginGroup(group);
     set.setValue(key, value);

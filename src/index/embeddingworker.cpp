@@ -184,6 +184,14 @@ bool EmbeddingWorkerPrivate::isSupportDoc(const QString &file)
     return suffixs.contains(fileInfo.suffix());
 }
 
+bool EmbeddingWorkerPrivate::isFilter(const QString &file)
+{
+    const auto &blacklist = ConfigManagerIns->value(BLACKLIST_GROUP, BLACKLIST_PATHS, QStringList()).toStringList();
+    return std::any_of(blacklist.begin(), blacklist.end(), [&file](const QString &path) {
+            return file.startsWith(path);
+        });
+}
+
 EmbeddingWorker::EmbeddingWorker(const QString &appid, QObject *parent)
     : QObject(parent),
       d(new EmbeddingWorkerPrivate(this))
@@ -321,6 +329,9 @@ void EmbeddingWorker::onCreateAllIndex()
 
 void EmbeddingWorker::traverseAndCreate(const QString &path)
 {
+    if (!d->m_creatingAll || d->isFilter(path))
+        return;
+
     const std::string tmp = path.toStdString();
     const char *filePath = tmp.c_str();
     struct stat st;
