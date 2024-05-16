@@ -37,7 +37,6 @@ public:
     bool isDupDocument(const QString &key, const QString &docFilePath);
 
     void embeddingClear();
-    QVector<float> getEmbeddingVector();
     QVector<faiss::idx_t> getEmbeddingIds();
     QMap<faiss::idx_t, QVector<float>> getEmbedVectorCache();
     QMap<faiss::idx_t, QPair<QString, QString>> getEmbedDataCache();
@@ -61,9 +60,7 @@ private:
     embeddingApi onHttpEmbedding = nullptr;
     void *apiData = nullptr;
 
-    QVector<float> embeddingVector;
     QVector<faiss::idx_t> embeddingIds;
-    QStringList insertSqlstrs;
     bool isStop = false;
 
     QVector<QString> sourcePaths;
