@@ -237,8 +237,12 @@ void VectorIndex::vectorSearch(int topK, const float *queryVector, const QString
 
 void VectorIndex::doIndexDump(const QString &indexKey)
 {
-    saveIndexToFile(flatIndexHash.value(indexKey), indexKey, kFaissFlatIndex);
-    flatIndexHash.value(indexKey)->reset();
+    auto idx = flatIndexHash.value(indexKey);
+    if (!idx)
+        return;
+
+    saveIndexToFile(idx, indexKey, kFaissFlatIndex);
+    idx->reset();
 }
 
 void VectorIndex::removeDupIndex(const faiss::Index *index, int topK, int DupK, QVector<faiss::idx_t> &nonDupIndex,

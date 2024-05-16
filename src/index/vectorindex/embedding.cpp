@@ -40,7 +40,7 @@ bool Embedding::embeddingDocument(const QString &docFilePath, const QString &key
         return false;
     }
 
-    QString contents = DocParser::convertFile(docFilePath.toStdString()).c_str();
+    QString contents = QString::fromStdString(DocParser::convertFile(docFilePath.toStdString()));
     if (contents.isEmpty())
         return false;
     qInfo() << "embedding " << docFilePath;

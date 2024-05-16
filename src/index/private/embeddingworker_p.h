@@ -44,7 +44,8 @@ public:
     QStringList getIndexDocs();
 
     bool isSupportDoc(const QString &file);
-
+    bool isFilter(const QString &file);
+public:
     Embedding *embedder {nullptr};
     VectorIndex *indexer {nullptr};
 
