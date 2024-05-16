@@ -84,13 +84,13 @@ QVector<QVector<float>> Embedding::embeddingTexts(const QStringList &texts)
     if (texts.isEmpty())
         return {};
 
-    int maxInput = 5;
+    int inputBatch = 15;
     QVector<QVector<float>> vectors;
     QStringList splitProcessText = texts;
     int currentIndex = 0;
     while (currentIndex < splitProcessText.size()) {
-        QStringList subList = splitProcessText.mid(currentIndex, maxInput);
-        currentIndex += maxInput;
+        QStringList subList = splitProcessText.mid(currentIndex, inputBatch);
+        currentIndex += inputBatch;
 
         QJsonObject emdObject = onHttpEmbedding(subList, apiData);
         QJsonArray embeddingsArray = emdObject["embedding"].toArray();
@@ -200,18 +200,11 @@ bool Embedding::isDupDocument(const QString &key, const QString &docFilePath)
 
 void Embedding::embeddingClear()
 {
-    //isStop = true;
-    embeddingVector.clear();
     embeddingIds.clear();
 
     sourcePaths.clear();
     embedDataCache.clear();
     embedVectorCache.clear();
-}
-
-QVector<float> Embedding::getEmbeddingVector()
-{
-    return embeddingVector;
 }
 
 QVector<faiss::idx_t> Embedding::getEmbeddingIds()
@@ -353,8 +346,8 @@ QString Embedding::loadTextsFromSearch(const QString &indexKey, int topK,
             }
 
             QVariantMap &res = result[0];
-            QString source = res["content"].toString();
-            QString content = res["source"].toString();
+            QString source = res["source"].toString();
+            QString content = res["content"].toString();
             QJsonObject obj;
             obj[kEmbeddingDBMetaDataTableSource] = source;
             obj[kEmbeddingDBMetaDataTableContent] = content;

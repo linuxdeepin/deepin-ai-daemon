@@ -259,11 +259,6 @@ void EmbeddingWorker::setWatch(bool watch)
     }
 }
 
-/*            [key] 知识库标识
- * 如SystemAssistant为系统助手知识库的标识
- * 索引创建、向量检索时都需此参数作为.faiss索引文件的名称
- * 后续区分知识库，可用此参数。
- */
 bool EmbeddingWorker::doCreateIndex(const QStringList &files)
 {
     //过滤文档
