@@ -51,7 +51,7 @@ public:
 
     bool m_creatingAll = false;
 
-    QString indexKey;
+    QString appID;
     QThread workThread;
 
     QSqlDatabase dataBase;

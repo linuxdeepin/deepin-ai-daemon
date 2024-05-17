@@ -22,26 +22,23 @@ class Embedding : public QObject
 {
     Q_OBJECT
 public:
-    explicit Embedding(QSqlDatabase *db, QMutex *mtx, QObject *parent = nullptr);
+    explicit Embedding(QSqlDatabase *db, QMutex *mtx, const QString &appID, QObject *parent = nullptr);
 
-    bool embeddingDocument(const QString &docFilePath, const QString &key);
+    bool embeddingDocument(const QString &docFilePath);
     QVector<QVector<float>> embeddingTexts(const QStringList &texts);
     void embeddingQuery(const QString &query, QVector<float> &queryVector);
 
-
     //DB operate
-    //bool clearAllDBTable(const QString &key);
-    bool batchInsertDataToDB(const QStringList &inserQuery, const QString &key);
+    bool batchInsertDataToDB(const QStringList &inserQuery);
     int getDBLastID();
     void createEmbedDataTable();
-    bool isDupDocument(const QString &key, const QString &docFilePath);
+    bool isDupDocument(const QString &docFilePath);
 
     void embeddingClear();
     QVector<faiss::idx_t> getEmbeddingIds();
     QMap<faiss::idx_t, QVector<float>> getEmbedVectorCache();
-    QMap<faiss::idx_t, QPair<QString, QString>> getEmbedDataCache();
 
-    QString loadTextsFromSearch(const QString &indexKey, int topK, const QMap<float, faiss::idx_t> &cacheSearchRes,
+    QString loadTextsFromSearch(int topK, const QMap<float, faiss::idx_t> &cacheSearchRes,
                                     const QMap<float, faiss::idx_t> &dumpSearchRes);
 
     inline void setEmbeddingApi(embeddingApi api, void *user) {
@@ -50,26 +47,25 @@ public:
     }
 
     void deleteCacheIndex(const QStringList &files);
-    void doIndexDump(const QString &key);
+    void doIndexDump();
 public slots:
-    void onIndexCreateSuccess(const QString &key);
 private:
     QStringList textsSpliter(QString &texts);
     void textsSplitSize(const QString &text, QStringList &splits, QString &over, int pos = 0);
+    QPair<QString, QString> getDataCacheFromID(const faiss::idx_t &id);
 
     embeddingApi onHttpEmbedding = nullptr;
     void *apiData = nullptr;
 
-    QVector<faiss::idx_t> embeddingIds;
-    bool isStop = false;
-
-    QVector<QString> sourcePaths;
-    //QHash<faiss::idx_t, QString> dataCache;
     QMap<faiss::idx_t, QPair<QString, QString>> embedDataCache;
     QMap<faiss::idx_t, QVector<float>> embedVectorCache;
 
     QSqlDatabase *dataBase = nullptr;
     QMutex *dbMtx = nullptr;
+
+    QMutex embeddingMutex;
+
+    QString appID;
 };
 
 #endif // EMBEDDING_H
