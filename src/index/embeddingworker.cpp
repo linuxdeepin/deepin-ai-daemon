@@ -33,14 +33,14 @@ void EmbeddingWorkerPrivate::init()
     }
 
     //embedding、向量索引
-    embedder = new Embedding(&dataBase, &dbMtx, this);
-    indexer = new VectorIndex(&dataBase, &dbMtx, this);
+    embedder = new Embedding(&dataBase, &dbMtx, appID, this);
+    indexer = new VectorIndex(&dataBase, &dbMtx, appID, this);
 
     QString databasePath;
-    if (indexKey == kSystemAssistantKey)
+    if (appID == kSystemAssistantKey)
         databasePath = QString("%0.db").arg(kSystemAssistantData);
     else
-        databasePath = QStandardPaths::writableLocation(QStandardPaths::AppDataLocation) + QDir::separator() +  indexKey + ".db";;
+        databasePath = QStandardPaths::writableLocation(QStandardPaths::AppDataLocation) + QDir::separator() +  appID + ".db";;
     dataBase = EmbedDBVendorIns->addDatabase(databasePath);
 }
 
@@ -88,11 +88,14 @@ bool EmbeddingWorkerPrivate::updateIndex(const QStringList &files)
 
     bool embedRes = true;
     for (const QString &embeddingfile : files) {
-        embedRes &= embedder->embeddingDocument(embeddingfile, indexKey);
+        embedRes &= embedder->embeddingDocument(embeddingfile);
     }
-    bool updateResult = indexer->updateIndex(EmbeddingDim, embedder->getEmbedVectorCache(), indexKey);
 
-    return updateResult && embedRes;
+    bool updateRes = false;
+    if (embedRes)
+        updateRes = indexer->updateIndex(EmbeddingDim, embedder->getEmbedVectorCache());
+
+    return updateRes && embedRes;
 }
 
 bool EmbeddingWorkerPrivate::deleteIndex(const QStringList &files)
@@ -109,10 +112,10 @@ bool EmbeddingWorkerPrivate::deleteIndex(const QStringList &files)
     //删除缓存中的数据、重置缓存索引
     if (!embedder->getEmbedVectorCache().isEmpty()) {
         embedder->deleteCacheIndex(files);
-        indexer->resetCacheIndex(EmbeddingDim, embedder->getEmbedVectorCache(), indexKey);
+        indexer->resetCacheIndex(EmbeddingDim, embedder->getEmbedVectorCache());
     }
 
-    //删除已存储的数据、索引deleteBitSet置1
+    //删除已存储的数据、TODO索引deleteBitSet置1
     QList<QVariantMap> result;
     QString queryDeleteID = "SELECT id FROM " + QString(kEmbeddingDBMetaDataTable) + " WHERE source IN " + sourceStr;
     QString queryDelete = "DELETE FROM " + QString(kEmbeddingDBMetaDataTable) + " WHERE source IN " + sourceStr;
@@ -122,7 +125,8 @@ bool EmbeddingWorkerPrivate::deleteIndex(const QStringList &files)
         EmbedDBVendorIns->executeQuery(&dataBase, queryDelete);
     }
 
-    return result.isEmpty();
+    //return !result.isEmpty();
+    return true;
 }
 
 QString EmbeddingWorkerPrivate::vectorSearch(const QString &query, int topK)
@@ -132,14 +136,14 @@ QString EmbeddingWorkerPrivate::vectorSearch(const QString &query, int topK)
 
     QMap<float, faiss::idx_t> cacheSearchRes;
     QMap<float, faiss::idx_t> dumpSearchRes;
-    indexer->vectorSearch(topK, queryVector.data(), indexKey, cacheSearchRes, dumpSearchRes);
-    QString res = embedder->loadTextsFromSearch(indexKey, topK, cacheSearchRes, dumpSearchRes);
+    indexer->vectorSearch(topK, queryVector.data(), cacheSearchRes, dumpSearchRes);
+    QString res = embedder->loadTextsFromSearch(topK, cacheSearchRes, dumpSearchRes);
     return res;
 }
 
 QString EmbeddingWorkerPrivate::indexDir()
 {
-    return workerDir() + QDir::separator() + indexKey;
+    return workerDir() + QDir::separator() + appID;
 }
 
 QStringList EmbeddingWorkerPrivate::getIndexDocs()
@@ -198,7 +202,7 @@ EmbeddingWorker::EmbeddingWorker(const QString &appid, QObject *parent)
 {
     Q_ASSERT(!appid.isEmpty());
 
-    d->indexKey = appid;
+    d->appID = appid;
     d->init();
 
     moveToThread(&d->workThread);
@@ -271,10 +275,10 @@ bool EmbeddingWorker::doCreateIndex(const QStringList &files)
 
     bool ret = d->updateIndex(files);
     if (!ret) {
-        Q_EMIT statusChanged(d->indexKey, files, Failed);
+        Q_EMIT statusChanged(d->appID, files, Failed);
         qWarning() << "Index update Failed";
     } else {
-        Q_EMIT statusChanged(d->indexKey, files, Success);
+        Q_EMIT statusChanged(d->appID, files, Success);
     }
 
     return ret;
@@ -293,7 +297,7 @@ bool EmbeddingWorker::doDeleteIndex(const QStringList &files)
     if (!ret)
         qWarning() << "Index Delete Failed";
     else
-        Q_EMIT indexDeleted(d->indexKey, files);
+        Q_EMIT indexDeleted(d->appID, files);
 
     return ret;
 }
@@ -310,8 +314,8 @@ void EmbeddingWorker::onFileMonitorDelete(const QString &file)
 
 void EmbeddingWorker::doIndexDump()
 {
-    d->embedder->doIndexDump(d->indexKey);
-    d->indexer->doIndexDump(d->indexKey);
+    d->embedder->doIndexDump();
+    d->indexer->doIndexDump();
 }
 
 void EmbeddingWorker::onCreateAllIndex()

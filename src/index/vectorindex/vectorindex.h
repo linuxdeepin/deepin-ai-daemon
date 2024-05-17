@@ -22,17 +22,13 @@ class VectorIndex : public QObject
     Q_OBJECT
 
 public:
-    explicit VectorIndex(QSqlDatabase *db, QMutex *mtx, QObject *parent = nullptr);
-    bool updateIndex(int d, const QMap<faiss::idx_t, QVector<float>> &embedVectorCache, const QString &indexKey);
-    bool saveIndexToFile(const faiss::Index *index, const QString &indexKey, const QString &indexType="All");
+    explicit VectorIndex(QSqlDatabase *db, QMutex *mtx, const QString &appID, QObject *parent = nullptr);
+    bool updateIndex(int d, const QMap<faiss::idx_t, QVector<float>> &embedVectorCache);
+    bool saveIndexToFile(const faiss::Index *index, const QString &indexType="All");
 
     //DB Operate
-    void createIndexSegTable(const QString &key);
-
-    void resetCacheIndex(int d, const QMap<faiss::idx_t, QVector<float>> &embedVectorCache, const QString &indexKey);
-
-    void vectorSearch(int topK, const float *queryVector, const QString &indexKey,
-                      QMap<float, faiss::idx_t> &cacheSearchRes, QMap<float, faiss::idx_t> &dumpSearchRes);
+    void resetCacheIndex(int d, const QMap<faiss::idx_t, QVector<float>> &embedVectorCache);
+    void vectorSearch(int topK, const float *queryVector, QMap<float, faiss::idx_t> &cacheSearchRes, QMap<float, faiss::idx_t> &dumpSearchRes);
 
     inline static QString workerDir()
     {
@@ -41,20 +37,21 @@ public:
         return workerDir;
     }
 
-    void doIndexDump(const QString &indexKey);
+    void doIndexDump();
 signals:
-    void indexDump(const QString &indexKey);
+    void indexDump();
 private:
-    void removeDupIndex(const faiss::Index *index, int topK, int DupK, QVector<faiss::idx_t> &nonDupIndex,
-                        const float *queryVector, QMap<float, bool> &seen);
+    QHash<QString, int> getIndexFilesNum();
 
-    QHash<QString, int> getIndexFilesNum(const QString &indexKey);
-
-    QHash<QString, faiss::IndexIDMap*> flatIndexHash;
+    faiss::IndexIDMap *cacheIndex = nullptr;
     QVector<faiss::idx_t> segmentIds;
 
     QSqlDatabase *dataBase = nullptr;
     QMutex *dbMtx = nullptr;
+
+    QMutex vectorIndexMtx;
+
+    QString appID;
 };
 
 #endif // VECTORINDEX_H

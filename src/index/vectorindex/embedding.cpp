@@ -18,26 +18,36 @@
 
 #include <docparser.h>
 
-Embedding::Embedding(QSqlDatabase *db, QMutex *mtx, QObject *parent)
+static constexpr char kSearchResultDistance[] { "distance" };
+
+Embedding::Embedding(QSqlDatabase *db, QMutex *mtx, const QString &appID, QObject *parent)
     : QObject(parent)
     , dataBase(db)
     , dbMtx(mtx)
+    , appID(appID)
 {
     Q_ASSERT(db);
     Q_ASSERT(mtx);
 }
 
-bool Embedding::embeddingDocument(const QString &docFilePath, const QString &key)
-{
+bool Embedding::embeddingDocument(const QString &docFilePath)
+{    
     QFileInfo docFile(docFilePath);
     if (!docFile.exists()) {
         qWarning() << docFilePath << "not exist";
         return false;
     }
 
-    if (isDupDocument(key, docFilePath) || sourcePaths.contains(docFilePath)) {
-        qWarning() << docFilePath << "dup";
+    if (isDupDocument(docFilePath)) {
+        qWarning() << docFilePath << "dump doc duplicate";
         return false;
+    }
+
+    for (auto id : embedDataCache.keys()) {
+        if (docFilePath == embedDataCache.value(id).first) {
+            qWarning() << docFilePath << "cache doc duplicate";
+            return false;
+        }
     }
 
     QString contents = QString::fromStdString(DocParser::convertFile(docFilePath.toStdString()));
@@ -48,33 +58,30 @@ bool Embedding::embeddingDocument(const QString &docFilePath, const QString &key
     //文本分块
     QStringList chunks;
     chunks = textsSpliter(contents);
-
     //向量化文本块，生成向量vector
     QVector<QVector<float>> vectors;
     vectors = embeddingTexts(chunks);
 
     if (vectors.count() != chunks.count())
         return false;
-
     if (vectors.isEmpty())
         return false;
 
-    //元数据、文本存储
-    int continueID = embedDataCache.size() + getDBLastID();
-    qInfo() << "-------------" << continueID;
+    {
+        QMutexLocker lk(&embeddingMutex);
+        //元数据、文本存储
+        int continueID = embedDataCache.size() + getDBLastID();
+        qInfo() << "-------------" << continueID;
 
-    for (int i = 0; i < chunks.count(); i++) {
-        if (chunks[i].isEmpty())
-            continue;
+        for (int i = 0; i < chunks.count(); i++) {
+            if (chunks[i].isEmpty())
+                continue;
 
-        //IDS添加
-        embeddingIds << continueID;
-        sourcePaths << docFilePath;
+            embedDataCache.insert(continueID, QPair<QString, QString>(docFilePath, chunks[i]));
+            embedVectorCache.insert(continueID, vectors[i]);
 
-        embedDataCache.insert(continueID, QPair<QString, QString>(docFilePath, chunks[i]));
-        embedVectorCache.insert(continueID, vectors[i]);
-
-        continueID += 1;
+            continueID += 1;
+        }
     }
     return true;
 }
@@ -93,7 +100,7 @@ QVector<QVector<float>> Embedding::embeddingTexts(const QStringList &texts)
         currentIndex += inputBatch;
 
         QJsonObject emdObject = onHttpEmbedding(subList, apiData);
-        QJsonArray embeddingsArray = emdObject["embedding"].toArray();
+        QJsonArray embeddingsArray = emdObject["data"].toArray();
         for(auto embeddingObject : embeddingsArray) {
             QJsonArray vectorArray = embeddingObject.toObject()["embedding"].toArray();
             QVector<float> vectorTmp;
@@ -121,7 +128,7 @@ void Embedding::embeddingQuery(const QString &query, QVector<float> &queryVector
 
     //获取query
     //local
-    QJsonArray embeddingsArray = emdObject["embedding"].toArray();
+    QJsonArray embeddingsArray = emdObject["data"].toArray();
     for(auto embeddingObject : embeddingsArray) {
         QJsonArray vectorArray = embeddingObject.toObject()["embedding"].toArray();
         for (auto value : vectorArray) {
@@ -130,20 +137,7 @@ void Embedding::embeddingQuery(const QString &query, QVector<float> &queryVector
     }
 }
 
-/*
-bool Embedding::clearAllDBTable(const QString &key)
-{
-    //重置Table [embedding_metadata]
-    QList<QVariantMap> result;
-    bool ok = QtConcurrent::run([key, &result](){
-        QString query = "DELETE FROM " + QString(kEmbeddingDBMetaDataTable);
-        return EmbedDBManagerIns->executeQuery(key + ".db", query, result);
-    });
-    return ok;
-}
-*/
-
-bool Embedding::batchInsertDataToDB(const QStringList &inserQuery, const QString &key)
+bool Embedding::batchInsertDataToDB(const QStringList &inserQuery)
 {
     if (inserQuery.isEmpty())
         return false;
@@ -181,7 +175,7 @@ void Embedding::createEmbedDataTable()
     return ;
 }
 
-bool Embedding::isDupDocument(const QString &key, const QString &docFilePath)
+bool Embedding::isDupDocument(const QString &docFilePath)
 {
     QList<QVariantMap> result;
 
@@ -200,26 +194,14 @@ bool Embedding::isDupDocument(const QString &key, const QString &docFilePath)
 
 void Embedding::embeddingClear()
 {
-    embeddingIds.clear();
-
-    sourcePaths.clear();
     embedDataCache.clear();
     embedVectorCache.clear();
 }
 
-QVector<faiss::idx_t> Embedding::getEmbeddingIds()
-{
-    return embeddingIds;
-}
-
 QMap<faiss::idx_t, QVector<float> > Embedding::getEmbedVectorCache()
 {
+    QMutexLocker lk(&embeddingMutex);
     return embedVectorCache;
-}
-
-QMap<faiss::idx_t, QPair<QString, QString> > Embedding::getEmbedDataCache()
-{
-    return embedDataCache;
 }
 
 QStringList Embedding::textsSpliter(QString &texts)
@@ -276,14 +258,19 @@ void Embedding::textsSplitSize(const QString &text, QStringList &splits, QString
     textsSplitSize(text, splits, over, pos + kMaxChunksSize);
 }
 
-QString Embedding::loadTextsFromSearch(const QString &indexKey, int topK,
-                                           const QMap<float, faiss::idx_t> &cacheSearchRes, const QMap<float, faiss::idx_t> &dumpSearchRes)
+QPair<QString, QString> Embedding::getDataCacheFromID(const faiss::idx_t &id)
+{
+    QMutexLocker lk(&embeddingMutex);
+    return QPair<QString, QString>(embedDataCache[id].first, embedDataCache[id].second);
+}
+
+QString Embedding::loadTextsFromSearch(int topK, const QMap<float, faiss::idx_t> &cacheSearchRes, const QMap<float, faiss::idx_t> &dumpSearchRes)
 {
     QJsonObject resultObj;
     resultObj["version"] = VERSION;
     QJsonArray resultArray;
 
-    if (indexKey == kSystemAssistantKey) {
+    if (appID == kSystemAssistantKey) {
         for (auto dumpIt : dumpSearchRes.keys()) {
             faiss::idx_t id = dumpSearchRes.value(dumpIt);
             QList<QVariantMap> result;
@@ -304,6 +291,7 @@ QString Embedding::loadTextsFromSearch(const QString &indexKey, int topK,
             QJsonObject obj;
             obj[kEmbeddingDBMetaDataTableSource] = source;
             obj[kEmbeddingDBMetaDataTableContent] = content;
+            obj[kSearchResultDistance] = static_cast<double>(dumpIt);
             resultArray.append(obj);
         }
         resultObj["result"] = resultArray;
@@ -322,11 +310,12 @@ QString Embedding::loadTextsFromSearch(const QString &indexKey, int topK,
         auto cacheIt = cacheSearchRes.begin() + i;
         auto dumpIt = dumpSearchRes.begin() + j;
         if (cacheIt.key() < dumpIt.key()) {
-            QString source = embedDataCache[cacheIt.value()].first;
-            QString content = embedDataCache[cacheIt.value()].second;
+            QString source = getDataCacheFromID(cacheIt.value()).first;
+            QString content = getDataCacheFromID(cacheIt.value()).second;
             QJsonObject obj;
             obj[kEmbeddingDBMetaDataTableSource] = source;
             obj[kEmbeddingDBMetaDataTableContent] = content;
+            obj[kSearchResultDistance] = static_cast<double>(cacheIt.key());
             resultArray.append(obj);
             sort++;
             i++;
@@ -351,6 +340,7 @@ QString Embedding::loadTextsFromSearch(const QString &indexKey, int topK,
             QJsonObject obj;
             obj[kEmbeddingDBMetaDataTableSource] = source;
             obj[kEmbeddingDBMetaDataTableContent] = content;
+            obj[kSearchResultDistance] = static_cast<double>(dumpIt.key());
             resultArray.append(obj);
             sort++;
             j++;
@@ -362,11 +352,12 @@ QString Embedding::loadTextsFromSearch(const QString &indexKey, int topK,
             break;
 
         auto cacheIt = cacheSearchRes.begin() + i;
-        QString source = embedDataCache[cacheIt.value()].first;
-        QString content = embedDataCache[cacheIt.value()].second;
+        QString source = getDataCacheFromID(cacheIt.value()).first;
+        QString content = getDataCacheFromID(cacheIt.value()).second;
         QJsonObject obj;
         obj[kEmbeddingDBMetaDataTableSource] = source;
         obj[kEmbeddingDBMetaDataTableContent] = content;
+        obj[kSearchResultDistance] = static_cast<double>(cacheIt.key());
         resultArray.append(obj);
         sort++;
         i++;
@@ -395,36 +386,35 @@ QString Embedding::loadTextsFromSearch(const QString &indexKey, int topK,
         QJsonObject obj;
         obj[kEmbeddingDBMetaDataTableSource] = source;
         obj[kEmbeddingDBMetaDataTableContent] = content;
+        obj[kSearchResultDistance] = static_cast<double>(dumpIt.key());
         resultArray.append(obj);
         sort++;
         j++;
     }
     resultObj["result"] = resultArray;
+    qInfo() << QJsonDocument(resultObj).toJson(QJsonDocument::Compact);
     return QJsonDocument(resultObj).toJson(QJsonDocument::Compact);
 }
 
 void Embedding::deleteCacheIndex(const QStringList &files)
-{
+{    
     if (files.isEmpty())
         return;
 
+    QMutexLocker lk(&embeddingMutex);
     for (auto id : embedDataCache.keys()) {
         if (!files.contains(embedDataCache.value(id).first))
             continue;
 
-        //删除文档数据、删除向量
+        //删除缓存文档数据、删除向量
         embedDataCache.remove(id);
         embedVectorCache.remove(id);
     }
 }
 
-void Embedding::onIndexCreateSuccess(const QString &key)
+void Embedding::doIndexDump()
 {
-
-}
-
-void Embedding::doIndexDump(const QString &key)
-{
+    QMutexLocker lk(&embeddingMutex);
     //插入源信息
     QStringList insertSqlstrs;
     for (auto id : embedDataCache.keys()) {
@@ -436,8 +426,8 @@ void Embedding::doIndexDump(const QString &key)
     if (insertSqlstrs.isEmpty())
         return;
 
-    if (!batchInsertDataToDB(insertSqlstrs, key)) {
-        qWarning() << "Insert DB failed." << key;
+    if (!batchInsertDataToDB(insertSqlstrs)) {
+        qWarning() << "Insert DB failed.";
     }
 
     embeddingClear();
