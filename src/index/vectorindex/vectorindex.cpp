@@ -45,10 +45,11 @@ bool VectorIndex::updateIndex(int d, const QMap<faiss::idx_t, QVector<float>> &e
         cacheIndex = new faiss::IndexIDMap(index);
     }
 
-    faiss::idx_t oldNTotal = cacheIndex->ntotal;
+    faiss::idx_t oldNTotal = cacheIndex->ntotal + embedVectorCache.firstKey();
     QVector<float> embeddingsTmp;
     QVector<faiss::idx_t> idsTmp;
-    for (faiss::idx_t id = oldNTotal; id < embedVectorCache.size(); id++) {
+
+    for (faiss::idx_t id = oldNTotal; id <= embedVectorCache.lastKey(); id++) {
         embeddingsTmp += embedVectorCache.value(id);
         idsTmp << id;
     }
