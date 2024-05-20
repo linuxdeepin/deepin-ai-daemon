@@ -53,6 +53,7 @@ bool ModelhubWrapper::ensureRunning()
         return true;
 
     // check running by user
+    QWriteLocker lk(&lock);
     {
         updateHost();
         if (!host.isEmpty() && port > 0)
@@ -100,8 +101,10 @@ bool ModelhubWrapper::ensureRunning()
 
 bool ModelhubWrapper::health()
 {
+    QReadLocker lk(&lock);
     if (host.isEmpty() || port < 1)
         return false;
+    lk.unlock();
 
     QUrl url = urlPath("/health");
 
@@ -121,6 +124,7 @@ bool ModelhubWrapper::health()
 
 QString ModelhubWrapper::urlPath(const QString &api) const
 {
+    QReadLocker lk(&lock);
     return QString("http://%0:%1%2").arg(host).arg(port).arg(api);
 }
 
