@@ -5,6 +5,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 #include <QObject>
+#include <QReadWriteLock>
 
 class ModelhubWrapper : public QObject
 {
@@ -28,5 +29,6 @@ protected:
     int port = -1;
     bool started = false;
     qint64 pid = -1;
+    mutable QReadWriteLock lock;
 };
 #endif   // MODELHUBWRAPPER_H
