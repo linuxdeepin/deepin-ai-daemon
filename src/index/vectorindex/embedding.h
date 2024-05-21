@@ -35,8 +35,9 @@ public:
     bool isDupDocument(const QString &docFilePath);
 
     void embeddingClear();
-    QVector<faiss::idx_t> getEmbeddingIds();
+
     QMap<faiss::idx_t, QVector<float>> getEmbedVectorCache();
+    QMap<faiss::idx_t, QPair<QString, QString>> getEmbedDataCache();
 
     QString loadTextsFromSearch(int topK, const QMap<float, faiss::idx_t> &cacheSearchRes,
                                     const QMap<float, faiss::idx_t> &dumpSearchRes);
