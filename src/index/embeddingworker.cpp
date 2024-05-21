@@ -148,17 +148,22 @@ QString EmbeddingWorkerPrivate::indexDir()
 
 QStringList EmbeddingWorkerPrivate::getIndexDocs()
 {
-    QList<QVariantMap> result;
+    //cache docs
+    QStringList cacheDocs;
+    QMap<faiss::idx_t, QPair<QString, QString>> cacheData = embedder->getEmbedDataCache();
+    for (faiss::idx_t id : cacheData.keys()) {
+        if (!cacheDocs.contains(cacheData[id].first))
+            cacheDocs << cacheData[id].first;
+    }
 
+    //dump docs
+    QStringList dumpDocs;
+    QList<QVariantMap> result;
     {
         QMutexLocker lk(&dbMtx);
         QString queryDocs = "SELECT source FROM " + QString(kEmbeddingDBMetaDataTable);
         EmbedDBVendorIns->executeQuery(&dataBase, queryDocs, result);
     }
-
-    if (result.isEmpty())
-        return {};
-
     QStringList queryResult;
     for (const QVariantMap &res : result) {
         if (res["id"].isValid())
@@ -168,8 +173,8 @@ QStringList EmbeddingWorkerPrivate::getIndexDocs()
     foreach (const QString &str, queryResult) {
         stringSet.insert(str);
     }
-    QStringList uniqueList = stringSet.toList();
-    return uniqueList;
+    dumpDocs = stringSet.toList();
+    return cacheDocs + dumpDocs;
 }
 
 bool EmbeddingWorkerPrivate::isSupportDoc(const QString &file)

@@ -31,7 +31,7 @@ Embedding::Embedding(QSqlDatabase *db, QMutex *mtx, const QString &appID, QObjec
 }
 
 bool Embedding::embeddingDocument(const QString &docFilePath)
-{    
+{
     QFileInfo docFile(docFilePath);
     if (!docFile.exists()) {
         qWarning() << docFilePath << "not exist";
@@ -202,6 +202,12 @@ QMap<faiss::idx_t, QVector<float> > Embedding::getEmbedVectorCache()
 {
     QMutexLocker lk(&embeddingMutex);
     return embedVectorCache;
+}
+
+QMap<faiss::idx_t, QPair<QString, QString>> Embedding::getEmbedDataCache()
+{
+    QMutexLocker lk(&embeddingMutex);
+    return embedDataCache;
 }
 
 QStringList Embedding::textsSpliter(QString &texts)
@@ -397,7 +403,7 @@ QString Embedding::loadTextsFromSearch(int topK, const QMap<float, faiss::idx_t>
 }
 
 void Embedding::deleteCacheIndex(const QStringList &files)
-{    
+{
     if (files.isEmpty())
         return;
 

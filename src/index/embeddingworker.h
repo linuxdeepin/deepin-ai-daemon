@@ -31,12 +31,9 @@ public:
     IndexCreateStatus createAllState();
     void setWatch(bool watch);
 public Q_SLOTS:
-
     QString doVectorSearch(const QString &query, int topK);
-
     QStringList getDocFile();
-//begin run in work thread
-public Q_SLOTS:
+
     void onCreateAllIndex();
     bool doCreateIndex(const QStringList &files);
     bool doDeleteIndex(const QStringList &files);
