@@ -25,6 +25,7 @@
 #include <faiss/utils/random.h>
 #include <faiss/IndexShards.h>
 #include <faiss/IndexFlatCodes.h>
+#include <faiss/impl/IDSelector.h>
 
 VectorIndex::VectorIndex(QSqlDatabase *db, QMutex *mtx, const QString &appID, QObject *parent)
     :QObject (parent)
@@ -95,7 +96,7 @@ bool VectorIndex::saveIndexToFile(const faiss::Index *index, const QString &inde
         QString insert = "INSERT INTO " + QString(kEmbeddingDBIndexSegTable)
                 + " (id, " + QString(kEmbeddingDBSegIndexTableBitSet)
                 + ", " + QString(kEmbeddingDBSegIndexIndexName) + ") " + "VALUES ("
-                + QString::number(id) + ", " + "1" + ", '" + indexName + "')";
+                + QString::number(id) + ", " + "0" + ", '" + indexName + "')";
         insertStrs << insert;
     }
 
@@ -205,6 +206,7 @@ void VectorIndex::vectorSearch(int topK, const float *queryVector,
             return;
         }
     }
+    QVector<uint8_t> deleteBitset = getDumpDeleteBitSet();
 
     QHash<QString, int> indexFilesNum = getIndexFilesNum();
     for (int i = 0; i < indexFilesNum.value(QString(kFaissFlatIndex)); i++) {
@@ -218,9 +220,14 @@ void VectorIndex::vectorSearch(int topK, const float *queryVector,
             std::cerr << "Faiss error: " << e.what() << std::endl;
             return;
         }
+
+        faiss::IDSelectorBitmap *idSelect = new faiss::IDSelectorBitmap(deleteBitset.size(), deleteBitset.data());
+        faiss::SearchParameters *param = new faiss::SearchParameters();
+        param->sel = idSelect;
+
         QVector<float> D1(topK);
         QVector<faiss::idx_t> I1(topK);
-        index->search(1, queryVector, topK, D1.data(), I1.data());
+        index->search(1, queryVector, topK, D1.data(), I1.data(), param);
 
         for (int id = 0; id < topK; id++) {
             if (I1[id] == -1 || D1[id] == 0.f)
@@ -271,4 +278,24 @@ QHash<QString, int> VectorIndex::getIndexFilesNum()
         }
     }
     return result;
+}
+
+QVector<uint8_t> VectorIndex::getDumpDeleteBitSet()
+{
+    QList<QVariantMap> result;
+    QString query = "SELECT * FROM " + QString(kEmbeddingDBIndexSegTable);
+    {
+        QMutexLocker lk(dbMtx);
+        EmbedDBVendorIns->executeQuery(dataBase, query, result);
+    }
+
+    int bitmapSize = static_cast<int>(std::ceil((result.size() >> 3)));
+    QVector<uint8_t> bitmap(bitmapSize);
+    for (int i = 0; i < bitmapSize; i++) {
+        for (int j = 0; j < 8; j++) {
+            bitmap[i] |= (!result[i * 8 + j]["source"].toBool() << j);
+        }
+   }
+
+   return bitmap;
 }
