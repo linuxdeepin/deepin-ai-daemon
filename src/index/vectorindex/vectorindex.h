@@ -42,6 +42,7 @@ signals:
     void indexDump();
 private:
     QHash<QString, int> getIndexFilesNum();
+    QVector<uint8_t> getDumpDeleteBitSet();
 
     faiss::IndexIDMap *cacheIndex = nullptr;
     QVector<faiss::idx_t> segmentIds;

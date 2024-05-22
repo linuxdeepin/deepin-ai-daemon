@@ -246,7 +246,7 @@ int Embedding::getDBLastID()
     QList<QVariantMap> result;
 
     {
-        QString query = "SELECT id FROM " + QString(kEmbeddingDBMetaDataTable) + " ORDER BY id DESC LIMIT 1";
+        QString query = "SELECT id FROM " + QString(kEmbeddingDBIndexSegTable) + " ORDER BY id DESC LIMIT 1";
         QMutexLocker lk(dbMtx);
         EmbedDBVendorIns->executeQuery(dataBase, query, result);
     }

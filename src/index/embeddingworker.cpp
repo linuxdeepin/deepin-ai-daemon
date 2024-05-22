@@ -123,17 +123,33 @@ bool EmbeddingWorkerPrivate::deleteIndex(const QStringList &files)
         indexer->resetCacheIndex(EmbeddingDim, embedder->getEmbedVectorCache());
     }
 
-    //删除已存储的数据、TODO索引deleteBitSet置1
+    //删除已存储的数据
     QList<QVariantMap> result;
     QString queryDeleteID = "SELECT id FROM " + QString(kEmbeddingDBMetaDataTable) + " WHERE source IN " + sourceStr;
     QString queryDelete = "DELETE FROM " + QString(kEmbeddingDBMetaDataTable) + " WHERE source IN " + sourceStr;
     {
         QMutexLocker lk(&dbMtx);
-        EmbedDBVendorIns->executeQuery(&dataBase, queryDeleteID, result);
+        EmbedDBVendorIns->executeQuery(&dataBase, queryDeleteID, result);        
         EmbedDBVendorIns->executeQuery(&dataBase, queryDelete);
     }
 
-    //return !result.isEmpty();
+    // 索引deleteBitSet置1
+    QString idsStr = "(";
+    for (const QVariantMap &res : result) {
+        faiss::idx_t id = res["id"].toInt();
+        if (result.last() == res) {
+            idsStr += "'" + QString::number(id) + "')";
+            break;
+        }
+        idsStr += "'" + QString::number(id) + "', ";
+    }
+    QString updateBitSet = "UPDATE " + QString(kEmbeddingDBIndexSegTable) + " SET " + QString(kEmbeddingDBSegIndexTableBitSet)
+                           + " = '" + QString::number(1) + "' WHERE id IN " + idsStr;
+    {
+        QMutexLocker lk(&dbMtx);
+        EmbedDBVendorIns->executeQuery(&dataBase, updateBitSet);
+    }
+
     return true;
 }
 
