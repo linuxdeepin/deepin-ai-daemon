@@ -54,13 +54,21 @@ bool Embedding::embeddingDocument(const QString &docFilePath)
     std::string stdStrContents = DocParser::convertFile(docFilePath.toStdString());
     QString contents = Utils::textEncodingTransferUTF8(stdStrContents);
 
-    if (contents.isEmpty())
-        return false;
-    qInfo() << "embedding " << docFilePath;
-
     //文本分块
     QStringList chunks;
-    chunks = textsSpliter(contents);
+    if (!contents.isEmpty())
+        chunks = textsSpliter(contents);
+
+    // 文件名大于14字节建索引
+    if (docFile.baseName().toUtf8().size() > 14) {
+        chunks.prepend(docFile.fileName());
+    }
+
+    if (chunks.isEmpty())
+        return false;
+
+    qDebug() << "embedding " << docFilePath;
+
     //向量化文本块，生成向量vector
     QVector<QVector<float>> vectors;
     vectors = embeddingTexts(chunks);
@@ -484,7 +492,7 @@ QString Embedding::loadTextsFromSearch(int topK, const QMap<float, faiss::idx_t>
         j++;
     }
     resultObj["result"] = resultArray;
-    qInfo() << QJsonDocument(resultObj).toJson(QJsonDocument::Compact);
+    qDebug() << QString::fromUtf8(QJsonDocument(resultObj).toJson(QJsonDocument::Compact));
     return QJsonDocument(resultObj).toJson(QJsonDocument::Compact);
 }
 
