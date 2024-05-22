@@ -42,6 +42,11 @@ void EmbeddingWorkerPrivate::init()
     else
         databasePath = QStandardPaths::writableLocation(QStandardPaths::AppDataLocation) + QDir::separator() +  appID + ".db";;
     dataBase = EmbedDBVendorIns->addDatabase(databasePath);
+
+    if (appID == kUosAIAssistant) {
+        // uos-ai 另存原文档
+        m_saveAsDoc = true;
+    }
 }
 
 bool EmbeddingWorkerPrivate::enableEmbedding(const QString &file)
@@ -88,7 +93,10 @@ bool EmbeddingWorkerPrivate::updateIndex(const QStringList &files)
 
     bool embedRes = true;
     for (const QString &embeddingfile : files) {
-        embedRes &= embedder->embeddingDocument(embeddingfile);
+        if (m_saveAsDoc)
+            embedRes &= embedder->embeddingDocumentSaveAs(embeddingfile);
+        else
+            embedRes &= embedder->embeddingDocument(embeddingfile);
     }
 
     bool updateRes = false;

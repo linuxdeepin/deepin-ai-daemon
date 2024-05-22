@@ -6,6 +6,7 @@
 #include "vectorindex.h"
 #include "database/embeddatabase.h"
 #include "../global_define.h"
+#include "utils/utils.h"
 
 #include <QRegularExpression>
 #include <QJsonDocument>
@@ -50,7 +51,9 @@ bool Embedding::embeddingDocument(const QString &docFilePath)
         }
     }
 
-    QString contents = QString::fromStdString(DocParser::convertFile(docFilePath.toStdString()));
+    std::string stdStrContents = DocParser::convertFile(docFilePath.toStdString());
+    QString contents = Utils::textEncodingTransferUTF8(stdStrContents);
+
     if (contents.isEmpty())
         return false;
     qInfo() << "embedding " << docFilePath;
@@ -83,6 +86,89 @@ bool Embedding::embeddingDocument(const QString &docFilePath)
             continueID += 1;
         }
     }
+    return true;
+}
+
+bool Embedding::embeddingDocumentSaveAs(const QString &docFilePath)
+{
+    // Embedding SaveAs
+    // uos-ai
+    QFileInfo docFile(docFilePath);
+    if (!docFile.exists()) {
+        qWarning() << docFilePath << "not exist";
+        return false;
+    }
+
+    QString docDirStr = workerDir() + QDir::separator() + appID + QDir::separator() + "Docs";
+    QDir docDir(docDirStr);
+    if (!docDir.exists()) {
+        if (!docDir.mkpath(docDirStr)) {
+            qWarning() << appID << " directory isn't exists and can't create!";
+            return false;
+        }
+    }
+    QString newDocPath = docDirStr + QDir::separator() + QFileInfo(docFilePath).fileName();
+
+    if (isDupDocument(newDocPath)) {
+        qWarning() << newDocPath << "dump doc duplicate";
+        return false;
+    }
+
+    for (auto id : embedDataCache.keys()) {
+        if (newDocPath == embedDataCache.value(id).first) {
+            qWarning() << newDocPath << "cache doc duplicate";
+            return false;
+        }
+    }
+
+    std::string stdStrContents = DocParser::convertFile(docFilePath.toStdString());
+    QString contents = Utils::textEncodingTransferUTF8(stdStrContents);
+
+    if (contents.isEmpty())
+        return false;
+    qInfo() << "embedding " << newDocPath;
+
+    //文本分块
+    QStringList chunks;
+    chunks = textsSpliter(contents);
+    //向量化文本块，生成向量vector
+    QVector<QVector<float>> vectors;
+    vectors = embeddingTexts(chunks);
+
+    if (vectors.count() != chunks.count())
+        return false;
+    if (vectors.isEmpty())
+        return false;
+
+    {
+        QMutexLocker lk(&embeddingMutex);
+        //元数据、文本存储
+        int continueID = embedDataCache.size() + getDBLastID();
+        qInfo() << "-------------" << continueID;
+
+        for (int i = 0; i < chunks.count(); i++) {
+            if (chunks[i].isEmpty())
+                continue;
+
+            embedDataCache.insert(continueID, QPair<QString, QString>(newDocPath, chunks[i]));
+            embedVectorCache.insert(continueID, vectors[i]);
+
+            continueID += 1;
+        }
+    }
+
+    QProcess process;
+    QString cmd = "cp " + docFilePath + " " + newDocPath;
+    process.start(cmd);
+    process.waitForFinished();
+
+    if (process.exitCode() == 0) {
+        qDebug() << "File copied successfully.";
+    } else {
+        qDebug() << "File copy failed.";
+        return false;
+    }
+
     return true;
 }
 

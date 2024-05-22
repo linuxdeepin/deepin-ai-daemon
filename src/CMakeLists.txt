@@ -64,6 +64,7 @@ target_link_libraries(${PROJECT_NAME}
     PkgConfig::Docparser
     pthread
     faiss
+    uchardet
 )
 
 # bin
