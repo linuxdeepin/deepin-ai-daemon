@@ -21,7 +21,7 @@
 VectorIndexDBus::VectorIndexDBus(QObject *parent) : QObject(parent)
 {
     m_whiteList << kGrandVectorSearch;
-    m_whiteList << "uos-ai-assistant";
+    m_whiteList << kUosAIAssistant;
     m_whiteList << kSystemAssistantKey;
     init();
 }

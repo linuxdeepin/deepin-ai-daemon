@@ -25,6 +25,7 @@ public:
     explicit Embedding(QSqlDatabase *db, QMutex *mtx, const QString &appID, QObject *parent = nullptr);
 
     bool embeddingDocument(const QString &docFilePath);
+    bool embeddingDocumentSaveAs(const QString &docFilePath);
     QVector<QVector<float>> embeddingTexts(const QStringList &texts);
     void embeddingQuery(const QString &query, QVector<float> &queryVector);
 
@@ -41,6 +42,13 @@ public:
 
     QString loadTextsFromSearch(int topK, const QMap<float, faiss::idx_t> &cacheSearchRes,
                                     const QMap<float, faiss::idx_t> &dumpSearchRes);
+
+    inline static QString workerDir()
+    {
+        static QString workerDir = QStandardPaths::writableLocation(QStandardPaths::AppDataLocation)
+                + "/embedding";
+        return workerDir;
+    }
 
     inline void setEmbeddingApi(embeddingApi api, void *user) {
         onHttpEmbedding = api;

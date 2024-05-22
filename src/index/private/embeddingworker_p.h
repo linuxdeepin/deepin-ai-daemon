@@ -50,6 +50,7 @@ public:
     VectorIndex *indexer {nullptr};
 
     bool m_creatingAll = false;
+    bool m_saveAsDoc = false;
 
     QString appID;
     QThread workThread;
