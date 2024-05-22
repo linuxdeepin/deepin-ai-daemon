@@ -385,12 +385,9 @@ void EmbeddingWorker::traverseAndCreate(const QString &path)
 //        return;
 
 
-    if (!d->isSupportDoc(path)) {
-        qDebug() << path << " doc not support!";
+    if (!d->isSupportDoc(path))
         return;
-    }
 
-    qDebug() << "do index for file" << path;
     if (d->m_creatingAll)
         d->updateIndex({path});
 }
