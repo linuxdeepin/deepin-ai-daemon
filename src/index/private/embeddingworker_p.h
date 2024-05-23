@@ -52,6 +52,8 @@ public:
     bool m_creatingAll = false;
     bool m_saveAsDoc = false;
 
+    qint64 indexUpdateTime = 0;
+
     QString appID;
     QThread workThread;
 

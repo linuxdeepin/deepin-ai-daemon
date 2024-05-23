@@ -30,6 +30,7 @@ public:
     };
     IndexCreateStatus createAllState();
     void setWatch(bool watch);
+    qint64 getIndexUpdateTime();
 public Q_SLOTS:
     QString doVectorSearch(const QString &query, int topK);
     QStringList getDocFile();

@@ -32,6 +32,13 @@ void EmbeddingWorkerPrivate::init()
         }
     }
 
+    //获取落盘索引更新时间
+    QFileInfoList fileList = QDir(workerDir() + QDir::separator() + appID).entryInfoList(QDir::Files, QDir::Time);
+    if (!fileList.isEmpty()) {
+        auto file = fileList.last();
+        indexUpdateTime = file.lastModified().toSecsSinceEpoch();
+    }
+
     //embedding、向量索引
     embedder = new Embedding(&dataBase, &dbMtx, appID, this);
     indexer = new VectorIndex(&dataBase, &dbMtx, appID, this);
@@ -102,6 +109,9 @@ bool EmbeddingWorkerPrivate::updateIndex(const QStringList &files)
     bool updateRes = false;
     if (embedRes)
         updateRes = indexer->updateIndex(EmbeddingDim, embedder->getEmbedVectorCache());
+
+    if (updateRes && embedRes)
+        indexUpdateTime = QDateTime::currentDateTimeUtc().toSecsSinceEpoch();
 
     return updateRes && embedRes;
 }
@@ -290,6 +300,11 @@ void EmbeddingWorker::setWatch(bool watch)
         connect(idx, &IndexManager::fileDeleted, this, &EmbeddingWorker::onFileMonitorDelete);
         //connect(idx, &IndexManager::fileAttributeChanged, this, );
     }
+}
+
+qint64 EmbeddingWorker::getIndexUpdateTime()
+{
+    return d->indexUpdateTime;
 }
 
 bool EmbeddingWorker::doCreateIndex(const QStringList &files)

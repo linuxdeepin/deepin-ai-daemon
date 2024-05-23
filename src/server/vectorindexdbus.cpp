@@ -96,18 +96,11 @@ QString VectorIndexDBus::getAutoIndexStatus(const QString &appID)
     hash.insert("enable", true);
     int st = embeddingWorker->createAllState() == EmbeddingWorker::Creating ? 0 : 1;
     hash.insert("completion", st);
-    qint64 time = 0;
-    {
-        QDir dir(QStandardPaths::writableLocation(QStandardPaths::AppDataLocation) + "/embedding/" + appID);
-        QFileInfoList fileList = dir.entryInfoList(QDir::Files, QDir::Time);
-        if (!fileList.isEmpty()) {
-            auto file = fileList.last();
-            time = file.lastModified().toSecsSinceEpoch();
-        }
-    }
 
-    if (st == 1)
+    if (st == 1) {
+        qint64 time = embeddingWorker->getIndexUpdateTime();
         hash.insert("updatetime", time);
+    }
 
     QString str = QString::fromUtf8(QJsonDocument(QJsonObject::fromVariantHash(hash)).toJson());
     return str;
