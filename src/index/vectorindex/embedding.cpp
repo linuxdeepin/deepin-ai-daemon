@@ -107,15 +107,7 @@ bool Embedding::embeddingDocumentSaveAs(const QString &docFilePath)
         return false;
     }
 
-    QString docDirStr = workerDir() + QDir::separator() + appID + QDir::separator() + "Docs";
-    QDir docDir(docDirStr);
-    if (!docDir.exists()) {
-        if (!docDir.mkpath(docDirStr)) {
-            qWarning() << appID << " directory isn't exists and can't create!";
-            return false;
-        }
-    }
-    QString newDocPath = docDirStr + QDir::separator() + QFileInfo(docFilePath).fileName();
+    QString newDocPath = saveAsDocPath(docFilePath);
 
     if (isDupDocument(newDocPath)) {
         qWarning() << newDocPath << "dump doc duplicate";
@@ -165,17 +157,8 @@ bool Embedding::embeddingDocumentSaveAs(const QString &docFilePath)
         }
     }
 
-    QProcess process;
-    QString cmd = "cp " + docFilePath + " " + newDocPath;
-    process.start(cmd);
-    process.waitForFinished();
-
-    if (process.exitCode() == 0) {
-        qDebug() << "File copied successfully.";
-    } else {
-        qDebug() << "File copy failed.";
+    if (!doSaveAsDoc(docFilePath))
         return false;
-    }
 
     return true;
 }
@@ -364,6 +347,20 @@ QPair<QString, QString> Embedding::getDataCacheFromID(const faiss::idx_t &id)
     return QPair<QString, QString>(embedDataCache[id].first, embedDataCache[id].second);
 }
 
+QString Embedding::saveAsDocPath(const QString &doc)
+{
+    QString docDirStr = workerDir() + QDir::separator() + appID + QDir::separator() + "Docs";
+    QDir docDir(docDirStr);
+    if (!docDir.exists()) {
+        if (!docDir.mkpath(docDirStr)) {
+            qWarning() << appID << " directory isn't exists and can't create!";
+            return "";
+        }
+    }
+
+    return docDirStr + QDir::separator() + QFileInfo(doc).fileName();
+}
+
 QString Embedding::loadTextsFromSearch(int topK, const QMap<float, faiss::idx_t> &cacheSearchRes, const QMap<float, faiss::idx_t> &dumpSearchRes)
 {
     QJsonObject resultObj;
@@ -531,4 +528,50 @@ void Embedding::doIndexDump()
     }
 
     embeddingClear();
+}
+
+bool Embedding::doSaveAsDoc(const QString &file)
+{
+    QString newDocPath = saveAsDocPath(file);
+
+    QProcess process;
+    QString cmd = "cp \"" + file + "\" " + "\"" + newDocPath + "\"";
+    process.start(cmd);
+    process.waitForFinished();
+
+    if (process.exitCode() == 0) {
+        qDebug() << "File copied successfully.";
+        return true;
+    } else {
+        qDebug() << "File copy failed.";
+        return false;
+    }
+}
+
+bool Embedding::doDeleteSaveAsDoc(const QStringList &files)
+{
+    for (const QString &oldDocPath : files) {
+        QString docDirStr = workerDir() + QDir::separator() + appID + QDir::separator() + "Docs";
+        QDir docDir(docDirStr);
+        if (!docDir.exists()) {
+            if (!docDir.mkpath(docDirStr)) {
+                qWarning() << appID << " directory isn't exists and can't create!";
+                return false;
+            }
+        }
+        QString newDocPath = saveAsDocPath(oldDocPath);
+
+        QProcess process;
+        QString cmd = "rm \"" + newDocPath + "\"";
+        process.start(cmd);
+        process.waitForFinished();
+
+        if (process.exitCode() == 0) {
+            qDebug() << "File deleted successfully.";
+        } else {
+            qDebug() << "File delete failed.";
+            return false;
+        }
+    }
+    return true;
 }

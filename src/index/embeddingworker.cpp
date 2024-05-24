@@ -106,14 +106,19 @@ bool EmbeddingWorkerPrivate::updateIndex(const QStringList &files)
             embedRes &= embedder->embeddingDocument(embeddingfile);
     }
 
-    bool updateRes = false;
-    if (embedRes)
-        updateRes = indexer->updateIndex(EmbeddingDim, embedder->getEmbedVectorCache());
+    if (!embedRes) {
+        embedder->embeddingClear();
+        return false;
+    }
 
-    if (updateRes && embedRes)
-        indexUpdateTime = QDateTime::currentDateTimeUtc().toSecsSinceEpoch();
+    bool updateRes = indexer->updateIndex(EmbeddingDim, embedder->getEmbedVectorCache());
+    if (!updateRes) {
+        embedder->embeddingClear();
+        return false;
+    }
 
-    return updateRes && embedRes;
+    indexUpdateTime = QDateTime::currentDateTimeUtc().toSecsSinceEpoch();
+    return updateRes;
 }
 
 bool EmbeddingWorkerPrivate::deleteIndex(const QStringList &files)
@@ -159,6 +164,9 @@ bool EmbeddingWorkerPrivate::deleteIndex(const QStringList &files)
         QMutexLocker lk(&dbMtx);
         EmbedDBVendorIns->executeQuery(&dataBase, updateBitSet);
     }
+
+    if (m_saveAsDoc)
+        embedder->doDeleteSaveAsDoc(files);
 
     return true;
 }
