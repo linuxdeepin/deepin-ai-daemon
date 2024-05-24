@@ -290,9 +290,13 @@ QVector<uint8_t> VectorIndex::getDumpDeleteBitSet()
     }
 
     int bitmapSize = static_cast<int>(std::ceil((result.size() >> 3)));
+    if (bitmapSize == 0)
+        bitmapSize += 1;
     QVector<uint8_t> bitmap(bitmapSize);
     for (int i = 0; i < bitmapSize; i++) {
         for (int j = 0; j < 8; j++) {
+            if ((i * 8 + j) >= result.size())
+                break;
             bitmap[i] |= (!result[i * 8 + j]["source"].toBool() << j);
         }
    }

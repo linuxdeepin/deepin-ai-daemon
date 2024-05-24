@@ -57,11 +57,13 @@ public:
 
     void deleteCacheIndex(const QStringList &files);
     void doIndexDump();
-public slots:
+    bool doSaveAsDoc(const QString &file);
+    bool doDeleteSaveAsDoc(const QStringList &files);
 private:
     QStringList textsSpliter(QString &texts);
     void textsSplitSize(const QString &text, QStringList &splits, QString &over, int pos = 0);
     QPair<QString, QString> getDataCacheFromID(const faiss::idx_t &id);
+    QString saveAsDocPath(const QString &doc);
 
     embeddingApi onHttpEmbedding = nullptr;
     void *apiData = nullptr;
