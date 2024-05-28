@@ -17,9 +17,15 @@ QSqlDatabase EmbedDBVendor::addDatabase(const QString &databasePath)
 {
     //打开数据库
     //QString databasePath = QStandardPaths::writableLocation(QStandardPaths::AppDataLocation) + QDir::separator() +  databaseName;
-    auto db = QSqlDatabase::addDatabase("QSQLITE");
+    auto db = QSqlDatabase::addDatabase("QSQLITE", QUuid::createUuid().toString());
     db.setDatabaseName(databasePath);
     return db;
+}
+
+void EmbedDBVendor::removeDatabase(QSqlDatabase *db)
+{
+    if (db)
+        QSqlDatabase::removeDatabase(db->connectionName());
 }
 
 bool EmbedDBVendor::executeQuery(QSqlDatabase *db, const QString &queryStr, QList<QVariantMap> &result)

@@ -274,6 +274,8 @@ EmbeddingWorker::~EmbeddingWorker()
         d->indexer = nullptr;
     }
 
+    EmbedDBVendor::instance()->removeDatabase(&d->dataBase);
+
     //TODO:停止embeddding、已建索引落盘、数据存储等
 }
 
