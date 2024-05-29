@@ -54,6 +54,8 @@ public:
 
     qint64 indexUpdateTime = 0;
 
+    int indexCreateStatus;
+
     QString appID;
     QThread workThread;
 
