@@ -9,6 +9,7 @@
 #include "vectorindex/vectorindex.h"
 
 #include <QObject>
+#include <QTimer>
 
 class EmbeddingWorkerPrivate;
 class EmbeddingWorker : public QObject
@@ -54,6 +55,8 @@ private:
     void traverseAndCreate(const QString &path);
 private:
     EmbeddingWorkerPrivate *d { nullptr };
+
+    QTimer dumpTimer;
 };
 
 #endif // EMBEDDINGWORKER_H

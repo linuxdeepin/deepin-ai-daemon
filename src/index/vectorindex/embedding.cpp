@@ -509,7 +509,7 @@ void Embedding::deleteCacheIndex(const QStringList &files)
     }
 }
 
-void Embedding::doIndexDump()
+bool Embedding::doIndexDump()
 {
     QMutexLocker lk(&embeddingMutex);
     //插入源信息
@@ -521,13 +521,15 @@ void Embedding::doIndexDump()
     }
 
     if (insertSqlstrs.isEmpty())
-        return;
+        return false;
 
     if (!batchInsertDataToDB(insertSqlstrs)) {
         qWarning() << "Insert DB failed.";
+        return false;
     }
 
     embeddingClear();
+    return true;
 }
 
 bool Embedding::doSaveAsDoc(const QString &file)

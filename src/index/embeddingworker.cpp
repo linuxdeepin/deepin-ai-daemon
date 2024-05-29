@@ -165,6 +165,7 @@ bool EmbeddingWorkerPrivate::deleteIndex(const QStringList &files)
         EmbedDBVendorIns->executeQuery(&dataBase, updateBitSet);
     }
 
+    // 删除另存的文档
     if (m_saveAsDoc)
         embedder->doDeleteSaveAsDoc(files);
 
@@ -251,6 +252,7 @@ EmbeddingWorker::EmbeddingWorker(const QString &appid, QObject *parent)
 
     d->appID = appid;
     d->init();
+    d->indexCreateStatus = 0;
 
     moveToThread(&d->workThread);
     d->workThread.start();
@@ -258,12 +260,20 @@ EmbeddingWorker::EmbeddingWorker(const QString &appid, QObject *parent)
     connect(this, &EmbeddingWorker::stopEmbedding, this, &EmbeddingWorker::doIndexDump);
     connect(d->indexer, &VectorIndex::indexDump, this, &EmbeddingWorker::doIndexDump);
 
+    dumpTimer.setInterval(30000); // 30秒落一次盘
+    dumpTimer.setSingleShot(false);
+    connect(&dumpTimer, &QTimer::timeout, this, &EmbeddingWorker::doIndexDump);
+    dumpTimer.start(10000);
+
     //索引建立成功，完成后续操作
     //connect(this, &EmbeddingWorker::indexCreateSuccess, d->embedder, &Embedding::onIndexCreateSuccess);
 }
 
 EmbeddingWorker::~EmbeddingWorker()
 {
+    // 已建索引落盘、数据存储
+    doIndexDump();
+
     if (d->embedder) {
         delete d->embedder;
         d->embedder = nullptr;
@@ -327,12 +337,15 @@ bool EmbeddingWorker::doCreateIndex(const QStringList &files)
         }
     }
 
+    d->indexCreateStatus = Creating;
     bool ret = d->updateIndex(files);
     if (!ret) {
         Q_EMIT statusChanged(d->appID, files, Failed);
+        d->indexCreateStatus = Failed;
         qWarning() << "Index update Failed";
     } else {
         Q_EMIT statusChanged(d->appID, files, Success);
+        d->indexCreateStatus = Success;
     }
 
     return ret;
@@ -368,8 +381,12 @@ void EmbeddingWorker::onFileMonitorDelete(const QString &file)
 
 void EmbeddingWorker::doIndexDump()
 {
-    d->embedder->doIndexDump();
-    d->indexer->doIndexDump();
+    if (d->indexCreateStatus != Success)
+        return;
+    if (d->embedder->doIndexDump()) {
+        d->indexer->doIndexDump();
+        d->indexCreateStatus = Failed;
+    }
 }
 
 void EmbeddingWorker::onCreateAllIndex()
@@ -425,12 +442,8 @@ void EmbeddingWorker::traverseAndCreate(const QString &path)
 //    if (isCheck && !checkUpdate(writer->getReader(), file, type))
 //        return;
 
-
-    if (!d->isSupportDoc(path))
-        return;
-
     if (d->m_creatingAll)
-        d->updateIndex({path});
+        doCreateIndex({path});
 }
 
 QString EmbeddingWorker::doVectorSearch(const QString &query, int topK)

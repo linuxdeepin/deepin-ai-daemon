@@ -56,7 +56,7 @@ public:
     }
 
     void deleteCacheIndex(const QStringList &files);
-    void doIndexDump();
+    bool doIndexDump();
     bool doSaveAsDoc(const QString &file);
     bool doDeleteSaveAsDoc(const QStringList &files);
 private:
