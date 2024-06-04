@@ -225,13 +225,18 @@ bool EmbeddingWorkerPrivate::isSupportDoc(const QString &file)
     QFileInfo fileInfo(file);
     QStringList suffixs;
     suffixs << "txt"
-           << "doc"
-           << "docx"
-           << "xls"
-           << "xlsx"
-           << "ppt"
-           << "pptx"
-           << "pdf";
+            << "text"
+            << "doc"
+            << "docx"
+            << "xls"
+            << "xlsx"
+            << "ppt"
+            << "pptx"
+            << "pps"
+            << "ppsx"
+            << "pdf"
+            << "wps"
+            << "dps";
 
     return suffixs.contains(fileInfo.suffix());
 }
