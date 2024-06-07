@@ -509,15 +509,21 @@ void Embedding::deleteCacheIndex(const QStringList &files)
     }
 }
 
-bool Embedding::doIndexDump()
+bool Embedding::doIndexDump(faiss::idx_t startID, faiss::idx_t endID)
 {
     QMutexLocker lk(&embeddingMutex);
     //插入源信息
     QStringList insertSqlstrs;
-    for (auto id : embedDataCache.keys()) {
+    for (faiss::idx_t id = startID; id <= endID; id++) {
+        if (!embedDataCache.contains(id))
+            continue;
+
         QString queryStr = "INSERT INTO embedding_metadata (id, source, content) VALUES ("
                 + QString::number(id) + ", '" + embedDataCache.value(id).first + "', " + "'" + embedDataCache.value(id).second + "')";
         insertSqlstrs << queryStr;
+
+        embedDataCache.remove(id);
+        embedVectorCache.remove(id);
     }
 
     if (insertSqlstrs.isEmpty())
@@ -528,7 +534,6 @@ bool Embedding::doIndexDump()
         return false;
     }
 
-    embeddingClear();
     return true;
 }
 

@@ -37,6 +37,8 @@ public:
         return workerDir;
     }
 
+    QPair<faiss::idx_t, faiss::idx_t> getDumpIndexIDRange();
+
     void doIndexDump();
 signals:
     void indexDump();
@@ -46,6 +48,7 @@ private:
 
     faiss::IndexIDMap *cacheIndex = nullptr;
     QVector<faiss::idx_t> segmentIds;
+    QPair<faiss::idx_t, faiss::idx_t> dumpIndexIDRange;
 
     QSqlDatabase *dataBase = nullptr;
     QMutex *dbMtx = nullptr;
