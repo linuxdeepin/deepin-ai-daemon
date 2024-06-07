@@ -386,11 +386,14 @@ void EmbeddingWorker::onFileMonitorDelete(const QString &file)
 
 void EmbeddingWorker::doIndexDump()
 {
-    if (d->indexCreateStatus != Success)
+    faiss::idx_t startID = d->indexer->getDumpIndexIDRange().first;
+    faiss::idx_t endID = d->indexer->getDumpIndexIDRange().second;
+
+    if (startID > endID)
         return;
-    if (d->embedder->doIndexDump()) {
+
+    if (d->embedder->doIndexDump(startID, endID)) {
         d->indexer->doIndexDump();
-        d->indexCreateStatus = Failed;
     }
 }
 

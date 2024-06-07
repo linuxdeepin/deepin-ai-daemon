@@ -33,6 +33,7 @@ VectorIndex::VectorIndex(QSqlDatabase *db, QMutex *mtx, const QString &appID, QO
     , dbMtx(mtx)
     , appID(appID)
 {
+    dumpIndexIDRange = qMakePair(0, -1);
 }
 
 bool VectorIndex::updateIndex(int d, const QMap<faiss::idx_t, QVector<float>> &embedVectorCache)
@@ -62,6 +63,8 @@ bool VectorIndex::updateIndex(int d, const QMap<faiss::idx_t, QVector<float>> &e
     qInfo() << "old total" << oldNTotal;
     qInfo() << "new total" << newNTotal;
     segmentIds += idsTmp;   //每个segment的索引所对应的IDs
+
+    dumpIndexIDRange = qMakePair(cacheIndex->id_map.front(), cacheIndex->id_map.back());
     lk.unlock();
 
     if (newNTotal >= 100) {
@@ -139,6 +142,7 @@ void VectorIndex::resetCacheIndex(int d, const QMap<faiss::idx_t, QVector<float>
 
     segmentIds.clear();
     segmentIds += idsTmp;   //每个segment的索引所对应的IDs
+    dumpIndexIDRange = qMakePair(cacheIndex->id_map.front(), cacheIndex->id_map.back());
     lk.unlock();
 
     if (newnTotal >= 100) {
@@ -242,6 +246,12 @@ void VectorIndex::vectorSearch(int topK, const float *queryVector,
     //TODO:检索结果后处理-去重、过于相近或远
 }
 
+QPair<faiss::idx_t, faiss::idx_t> VectorIndex::getDumpIndexIDRange()
+{
+    QMutexLocker lk(&vectorIndexMtx);
+    return dumpIndexIDRange;
+}
+
 void VectorIndex::doIndexDump()
 {
     QMutexLocker lk(&vectorIndexMtx);
@@ -251,6 +261,7 @@ void VectorIndex::doIndexDump()
 
     saveIndexToFile(cacheIndex, kFaissFlatIndex);
     cacheIndex->reset();
+    dumpIndexIDRange = qMakePair(0, -1);
 }
 
 QHash<QString, int> VectorIndex::getIndexFilesNum()
