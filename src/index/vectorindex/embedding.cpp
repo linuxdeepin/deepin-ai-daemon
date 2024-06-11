@@ -162,9 +162,6 @@ bool Embedding::embeddingDocumentSaveAs(const QString &docFilePath)
         }
     }
 
-    if (!doSaveAsDoc(docFilePath))
-        return false;
-
     return true;
 }
 
@@ -306,7 +303,7 @@ QStringList Embedding::textsSpliter(QString &texts)
 
     QString over = "";
     for (auto text : splitTexts) {
-        text += over;
+        text = over + text;
         over = "";
 
         if (text.length() > kMaxChunksSize) {
@@ -314,7 +311,7 @@ QStringList Embedding::textsSpliter(QString &texts)
         } else if (text.length() > kMinChunksSize && text.length() < kMaxChunksSize) {
             chunks << text;
         } else {
-            over += text;
+            over = text;
         }
     }
 
