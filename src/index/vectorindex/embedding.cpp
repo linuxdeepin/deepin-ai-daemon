@@ -67,7 +67,12 @@ bool Embedding::embeddingDocument(const QString &docFilePath)
     if (chunks.isEmpty())
         return false;
 
-    qDebug() << "embedding " << docFilePath;
+    qDebug() << "embedding " << docFilePath << chunks.size();
+    // 只需前100个
+    if (chunks.size() > 100) {
+        chunks = chunks.mid(0, 100);
+        qDebug() << "Get the top 100 chunks" << docFilePath;
+    }
 
     //向量化文本块，生成向量vector
     QVector<QVector<float>> vectors;

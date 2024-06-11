@@ -447,8 +447,9 @@ void EmbeddingWorker::traverseAndCreate(const QString &path)
         return;
     }
 
-//    if (isCheck && !checkUpdate(writer->getReader(), file, type))
-//        return;
+    static const int maxFileSize = 50 * 1024 * 1024; //50MB
+    if (QFileInfo(path).size() > maxFileSize)
+        return;
 
     if (d->m_creatingAll)
         doCreateIndex({path});
