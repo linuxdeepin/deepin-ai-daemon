@@ -117,6 +117,13 @@ bool EmbeddingWorkerPrivate::updateIndex(const QStringList &files)
         return false;
     }
 
+    if (m_saveAsDoc) {
+        // 复制原文档
+        for (const QString &embeddingfile : files) {
+            embedder->doSaveAsDoc(embeddingfile);
+        }
+    }
+
     indexUpdateTime = QDateTime::currentDateTimeUtc().toSecsSinceEpoch();
     return updateRes;
 }
