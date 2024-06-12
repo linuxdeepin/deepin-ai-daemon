@@ -228,7 +228,7 @@ bool Embedding::batchInsertDataToDB(const QStringList &inserQuery)
 
 int Embedding::getDBLastID()
 {
-    QList<QVariantMap> result;
+    QList<QVariantList> result;
 
     {
         QString query = "SELECT id FROM " + QString(kEmbeddingDBIndexSegTable) + " ORDER BY id DESC LIMIT 1";
@@ -236,9 +236,13 @@ int Embedding::getDBLastID()
         EmbedDBVendorIns->executeQuery(dataBase, query, result);
     }
 
-    if (result.isEmpty() || !result[0]["id"].isValid())
+    if (result.isEmpty())
         return 0;
-    return result[0]["id"].toInt() + 1;
+
+    if (!result[0][0].isValid())
+        return 0;
+
+    return result[0][0].toInt() + 1;
 }
 
 void Embedding::createEmbedDataTable()
@@ -256,7 +260,7 @@ void Embedding::createEmbedDataTable()
 
 bool Embedding::isDupDocument(const QString &docFilePath)
 {
-    QList<QVariantMap> result;
+    QList<QVariantList> result;
 
     QString query = "SELECT CASE WHEN EXISTS (SELECT 1 FROM " + QString(kEmbeddingDBMetaDataTable)
             + " WHERE source = '" + docFilePath + "') THEN 1 ELSE 0 END";
@@ -266,9 +270,11 @@ bool Embedding::isDupDocument(const QString &docFilePath)
         EmbedDBVendorIns->executeQuery(dataBase, query, result);
     }
 
-    if (result.isEmpty() || !result[0]["id"].isValid())
+    if (result.isEmpty())
         return 0;
-    return result[0]["id"].toBool();
+    if (!result[0][0].isValid())
+        return 0;
+    return result[0][0].toBool();
 }
 
 void Embedding::embeddingClear()
@@ -366,13 +372,13 @@ QString Embedding::saveAsDocPath(const QString &doc)
 QString Embedding::loadTextsFromSearch(int topK, const QMap<float, faiss::idx_t> &cacheSearchRes, const QMap<float, faiss::idx_t> &dumpSearchRes)
 {
     QJsonObject resultObj;
-    resultObj["version"] = VERSION;
+    resultObj["version"] = SEARCH_RESULT_VERSION;
     QJsonArray resultArray;
 
     if (appID == kSystemAssistantKey) {
         for (auto dumpIt : dumpSearchRes.keys()) {
             faiss::idx_t id = dumpSearchRes.value(dumpIt);
-            QList<QVariantMap> result;
+            QList<QVariantList> result;
 
             QString query = "SELECT * FROM " + QString(kEmbeddingDBMetaDataTable) + " WHERE id = " + QString::number(id);
             {
@@ -384,9 +390,12 @@ QString Embedding::loadTextsFromSearch(int topK, const QMap<float, faiss::idx_t>
                 return {};
             }
 
-            QVariantMap &res = result[0];
-            QString source = res["source"].toString();
-            QString content = res["content"].toString();
+            QVariantList &res = result[0];
+            if (!res[1].isValid() || !res[2].isValid())
+                continue;
+
+            QString source = res[1].toString();
+            QString content = res[2].toString();
             QJsonObject obj;
             obj[kEmbeddingDBMetaDataTableSource] = source;
             obj[kEmbeddingDBMetaDataTableContent] = content;
@@ -420,7 +429,7 @@ QString Embedding::loadTextsFromSearch(int topK, const QMap<float, faiss::idx_t>
             i++;
         } else {
             faiss::idx_t id = dumpIt.value();
-            QList<QVariantMap> result;
+            QList<QVariantList> result;
 
             {
                 QString query = "SELECT * FROM " + QString(kEmbeddingDBMetaDataTable) + " WHERE id = " + QString::number(id);
@@ -433,9 +442,12 @@ QString Embedding::loadTextsFromSearch(int topK, const QMap<float, faiss::idx_t>
                 continue;
             }
 
-            QVariantMap &res = result[0];
-            QString source = res["source"].toString();
-            QString content = res["content"].toString();
+            QVariantList &res = result[0];
+            if (!res[1].isValid() || !res[2].isValid())
+                continue;
+
+            QString source = res[1].toString();
+            QString content = res[2].toString();
             QJsonObject obj;
             obj[kEmbeddingDBMetaDataTableSource] = source;
             obj[kEmbeddingDBMetaDataTableContent] = content;
@@ -468,7 +480,7 @@ QString Embedding::loadTextsFromSearch(int topK, const QMap<float, faiss::idx_t>
 
         auto dumpIt = dumpSearchRes.begin() + j;
         faiss::idx_t id = dumpIt.value();
-        QList<QVariantMap> result;
+        QList<QVariantList> result;
         {
             QString query = "SELECT * FROM " + QString(kEmbeddingDBMetaDataTable) + " WHERE id = " + QString::number(id);
             QMutexLocker lk(dbMtx);
@@ -479,9 +491,12 @@ QString Embedding::loadTextsFromSearch(int topK, const QMap<float, faiss::idx_t>
             continue;
         }
 
-        QVariantMap &res = result[0];
-        QString source = res["source"].toString();
-        QString content = res["content"].toString();
+        QVariantList &res = result[0];
+        if (!res[1].isValid() || !res[2].isValid())
+            continue;
+
+        QString source = res[1].toString();
+        QString content = res[2].toString();
         QJsonObject obj;
         obj[kEmbeddingDBMetaDataTableSource] = source;
         obj[kEmbeddingDBMetaDataTableContent] = content;

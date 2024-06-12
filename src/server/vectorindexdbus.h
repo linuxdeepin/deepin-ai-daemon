@@ -31,7 +31,7 @@ public Q_SLOTS:
     QString Search(const QString &appID, const QString &query, int topK);
 
     bool Enable();
-    QStringList DocFiles(const QString &appID);
+    QString DocFiles(const QString &appID);
 
     QString getAutoIndexStatus(const QString &appID);
     void setAutoIndex(const QString &appID, bool on);

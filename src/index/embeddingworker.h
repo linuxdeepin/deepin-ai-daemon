@@ -34,7 +34,7 @@ public:
     qint64 getIndexUpdateTime();
 public Q_SLOTS:
     QString doVectorSearch(const QString &query, int topK);
-    QStringList getDocFile();
+    QString getDocFile();
 
     void onCreateAllIndex();
     bool doCreateIndex(const QStringList &files);

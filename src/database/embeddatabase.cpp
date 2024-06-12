@@ -28,7 +28,7 @@ void EmbedDBVendor::removeDatabase(QSqlDatabase *db)
         QSqlDatabase::removeDatabase(db->connectionName());
 }
 
-bool EmbedDBVendor::executeQuery(QSqlDatabase *db, const QString &queryStr, QList<QVariantMap> &result)
+bool EmbedDBVendor::executeQuery(QSqlDatabase *db, const QString &queryStr, QList<QVariantList> &result)
 {
     bool ret = false;
 
@@ -38,11 +38,12 @@ bool EmbedDBVendor::executeQuery(QSqlDatabase *db, const QString &queryStr, QLis
     QSqlQuery query(*db);
     if (query.exec(queryStr)) {
         while (query.next()) {
-            QVariantMap res;
-            res.insert("id", query.value(0));
-            res.insert("source", query.value(1));
-            res.insert("content", query.value(2));
-            result.push_back(res);
+            QVariantList res;
+            res.append(query.value(0));
+            res.append(query.value(1));
+            res.append(query.value(2));
+
+            result.append(res);
         }
         ret = true;
     } else {

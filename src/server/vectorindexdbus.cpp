@@ -64,7 +64,7 @@ bool VectorIndexDBus::Enable()
                                        ModelhubWrapper::isModelInstalled(dependModel()));
 }
 
-QStringList VectorIndexDBus::DocFiles(const QString &appID)
+QString VectorIndexDBus::DocFiles(const QString &appID)
 {
     EmbeddingWorker *embeddingWorker = ensureWorker(appID);
     if (!embeddingWorker)

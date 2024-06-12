@@ -41,7 +41,7 @@ public:
     QString vectorSearch(const QString &query, int topK);
 
     QString indexDir();
-    QStringList getIndexDocs();
+    QString getIndexDocs();
 
     bool isSupportDoc(const QString &file);
     bool isFilter(const QString &file);

@@ -18,7 +18,7 @@ public:
     static EmbedDBVendor *instance();
     QSqlDatabase addDatabase(const QString &databasePath);
     void removeDatabase(QSqlDatabase *db);
-    bool executeQuery(QSqlDatabase *db, const QString &queryStr, QList<QVariantMap> &result);
+    bool executeQuery(QSqlDatabase *db, const QString &queryStr, QList<QVariantList> &result);
     bool executeQuery(QSqlDatabase *db, const QString &queryStr);
     bool commitTransaction(QSqlDatabase *db, const QStringList &queryList);
     bool isEmbedDataTableExists(QSqlDatabase *db, const QString &tableName);

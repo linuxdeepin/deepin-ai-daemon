@@ -28,7 +28,7 @@
     </method>
     <method name="DocFiles">
       <arg name="appID" type="s" direction="in"/>
-      <arg type="as" direction="out"/>     
+      <arg type="s" direction="out"/>     
     </method>
     <method name="Enable">
       <arg type="b" direction="out"/>
