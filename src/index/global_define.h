@@ -13,7 +13,8 @@ typedef QJsonObject EmbeddingJsonObject;
 #define FAISS_INDEX_FILES "~/vectorDatabase/IndexFilesPath.json"
 
 #define EmbeddingDim 1024
-#define VERSION 1.0
+#define SEARCH_RESULT_VERSION 1.0
+#define GET_DOCS_VERSION 1.0
 static constexpr char kSystemAssistantKey[] { "SystemAssistant" };
 static constexpr char kGrandVectorSearch[] { "dde-grand-search" };
 static constexpr char kUosAIAssistant[] { "uos-ai-assistant" };

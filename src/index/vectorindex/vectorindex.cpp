@@ -293,7 +293,7 @@ QHash<QString, int> VectorIndex::getIndexFilesNum()
 
 QVector<uint8_t> VectorIndex::getDumpDeleteBitSet()
 {
-    QList<QVariantMap> result;
+    QList<QVariantList> result;
     QString query = "SELECT * FROM " + QString(kEmbeddingDBIndexSegTable);
     {
         QMutexLocker lk(dbMtx);
@@ -308,7 +308,8 @@ QVector<uint8_t> VectorIndex::getDumpDeleteBitSet()
         for (int j = 0; j < 8; j++) {
             if ((i * 8 + j) >= result.size())
                 break;
-            bitmap[i] |= (!result[i * 8 + j]["source"].toBool() << j);
+            if (result[i * 8 + j][1].isValid())
+                bitmap[i] |= (!result[i * 8 + j][1].toBool() << j);
         }
    }
 

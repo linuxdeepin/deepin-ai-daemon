@@ -146,7 +146,7 @@ bool EmbeddingWorkerPrivate::deleteIndex(const QStringList &files)
     }
 
     //删除已存储的数据
-    QList<QVariantMap> result;
+    QList<QVariantList> result;
     QString queryDeleteID = "SELECT id FROM " + QString(kEmbeddingDBMetaDataTable) + " WHERE source IN " + sourceStr;
     QString queryDelete = "DELETE FROM " + QString(kEmbeddingDBMetaDataTable) + " WHERE source IN " + sourceStr;
     {
@@ -157,8 +157,14 @@ bool EmbeddingWorkerPrivate::deleteIndex(const QStringList &files)
 
     // 索引deleteBitSet置1
     QString idsStr = "(";
-    for (const QVariantMap &res : result) {
-        faiss::idx_t id = res["id"].toInt();
+    for (const QVariantList &res : result) {
+        if (res.empty())
+            break;
+
+        if (!res[0].isValid())
+            continue;
+
+        faiss::idx_t id = res[0].toInt();
         if (result.last() == res) {
             idsStr += "'" + QString::number(id) + "')";
             break;
@@ -196,35 +202,53 @@ QString EmbeddingWorkerPrivate::indexDir()
     return workerDir() + QDir::separator() + appID;
 }
 
-QStringList EmbeddingWorkerPrivate::getIndexDocs()
+QString EmbeddingWorkerPrivate::getIndexDocs()
 {
+    QJsonObject resultObj;
+    resultObj["version"] = GET_DOCS_VERSION;
+    QJsonArray resultArray;
+
     //cache docs
     QStringList cacheDocs;
     QMap<faiss::idx_t, QPair<QString, QString>> cacheData = embedder->getEmbedDataCache();
     for (faiss::idx_t id : cacheData.keys()) {
-        if (!cacheDocs.contains(cacheData[id].first))
-            cacheDocs << cacheData[id].first;
+        if (!cacheDocs.contains(cacheData[id].first)) {
+            QJsonObject obj;
+            obj.insert("doc", cacheData[id].first);
+            obj.insert("content", cacheData[id].second);
+            resultArray.append(obj);
+            cacheDocs.append(cacheData[id].first);
+        }
     }
 
     //dump docs
     QStringList dumpDocs;
-    QList<QVariantMap> result;
+    QList<QVariantList> result;
     {
         QMutexLocker lk(&dbMtx);
-        QString queryDocs = "SELECT source FROM " + QString(kEmbeddingDBMetaDataTable);
+        QString queryDocs = "SELECT source, content FROM " + QString(kEmbeddingDBMetaDataTable);
         EmbedDBVendorIns->executeQuery(&dataBase, queryDocs, result);
     }
     QStringList queryResult;
-    for (const QVariantMap &res : result) {
-        if (res["id"].isValid())
-            queryResult << res["id"].toString();
+    for (const QVariantList &res : result) {
+        if (res.isEmpty())
+            break;
+
+        if (!res[0].isValid() || !res[1].isValid())
+            continue;
+
+        if (!queryResult.contains(res[0].toString())) {
+            QJsonObject obj;
+            obj.insert("doc", res[0].toString());
+            obj.insert("content", res[1].toString());
+            resultArray.append(obj);
+
+            queryResult.append(res[0].toString());
+        }
     }
-    QSet<QString> stringSet;
-    foreach (const QString &str, queryResult) {
-        stringSet.insert(str);
-    }
-    dumpDocs = stringSet.toList();
-    return cacheDocs + dumpDocs;
+    resultObj.insert("result", resultArray);
+
+    return QJsonDocument(resultObj).toJson(QJsonDocument::Compact);
 }
 
 bool EmbeddingWorkerPrivate::isSupportDoc(const QString &file)
@@ -471,7 +495,7 @@ QString EmbeddingWorker::doVectorSearch(const QString &query, int topK)
     return d->vectorSearch(query,topK);
 }
 
-QStringList EmbeddingWorker::getDocFile()
+QString EmbeddingWorker::getDocFile()
 {
     return d->getIndexDocs();
 }
