@@ -7,11 +7,14 @@
 
 #include "abstractpropertyparser.h"
 
+#ifdef ENABLE_OCR
 class ImagePropertyParser : public AbstractPropertyParser
 {
 public:
     explicit ImagePropertyParser(QObject *parent = nullptr);
     virtual QList<Property> properties(const QString &file) override;
 };
+
+#endif
 
 #endif   //IMAGEPROPERTYPARSER_H
