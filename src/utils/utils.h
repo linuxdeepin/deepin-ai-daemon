@@ -15,6 +15,7 @@ public:
     explicit Utils(QObject *parent = nullptr);
 
     static QString textEncodingTransferUTF8(const std::string &content);
+    static bool isValidContent(const std::string &content);
 };
 
 #endif // UTILS_H

@@ -6,6 +6,7 @@
 
 #include <QTextStream>
 #include <QTextCodec>
+#include <QMimeDatabase>
 #include <QDebug>
 
 #include <uchardet/uchardet.h>
@@ -34,4 +35,19 @@ QString Utils::textEncodingTransferUTF8(const std::string &content)
     oldEncoding.setCodec(oldCodec);
 
     return oldEncoding.readAll();
+}
+
+bool Utils::isValidContent(const std::string &content)
+{
+    QByteArray data = QByteArray::fromStdString(content);
+
+    QMimeDatabase mimeDB;
+    QMimeType mimeType = mimeDB.mimeTypeForData(data);
+    if (!mimeType.isValid())
+        return false;
+
+    if (mimeType.name() == "text/plain")
+        return true;
+
+    return false;
 }

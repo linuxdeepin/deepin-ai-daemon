@@ -54,6 +54,11 @@ bool Embedding::embeddingDocument(const QString &docFilePath)
     std::string stdStrContents = DocParser::convertFile(docFilePath.toStdString());
     QString contents = Utils::textEncodingTransferUTF8(stdStrContents);
 
+    if (!Utils::isValidContent(stdStrContents)) {
+        qDebug() << "Invalid document content.";
+        return false;
+    }
+
     //文本分块
     QStringList chunks;
     if (!contents.isEmpty())
@@ -128,6 +133,11 @@ bool Embedding::embeddingDocumentSaveAs(const QString &docFilePath)
 
     std::string stdStrContents = DocParser::convertFile(docFilePath.toStdString());
     QString contents = Utils::textEncodingTransferUTF8(stdStrContents);
+
+    if (!Utils::isValidContent(stdStrContents)) {
+        qDebug() << "Invalid document content.";
+        return false;
+    }
 
     if (contents.isEmpty())
         return false;
@@ -559,13 +569,19 @@ bool Embedding::doSaveAsDoc(const QString &file)
     QString newDocPath = saveAsDocPath(file);
 
     QProcess process;
-    QString cmd = "cp \"" + file + "\" " + "\"" + newDocPath + "\"";
-    process.start(cmd);
+    process.start("cp", QStringList() << file << newDocPath);
     process.waitForFinished();
-
     if (process.exitCode() == 0) {
-        qDebug() << "File copied successfully.";
-        return true;
+        process.start("chmod", QStringList() << "444" << newDocPath);
+        process.waitForFinished();
+        if (process.exitCode() == 0) {
+            qDebug() << "File copy successed.";
+            return true;
+        } else {
+            qDebug() << "File copy failed.";
+            // rm
+            return false;
+        }
     } else {
         qDebug() << "File copy failed.";
         return false;
@@ -586,8 +602,7 @@ bool Embedding::doDeleteSaveAsDoc(const QStringList &files)
         QString newDocPath = saveAsDocPath(oldDocPath);
 
         QProcess process;
-        QString cmd = "rm \"" + newDocPath + "\"";
-        process.start(cmd);
+        process.start("rm", QStringList() << newDocPath);
         process.waitForFinished();
 
         if (process.exitCode() == 0) {
