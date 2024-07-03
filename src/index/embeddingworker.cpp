@@ -91,12 +91,12 @@ QStringList EmbeddingWorkerPrivate::embeddingPaths()
 }
 
 
-bool EmbeddingWorkerPrivate::updateIndex(const QStringList &files)
+int EmbeddingWorkerPrivate::updateIndex(const QStringList &files)
 {
     embedder->createEmbedDataTable();
 
     if (files.isEmpty())
-        return false;
+        return GET_INDEX_STATUS_CODE(INDEX_STATUS_DOCERROR);
 
     bool embedRes = true;
     for (const QString &embeddingfile : files) {
@@ -108,13 +108,13 @@ bool EmbeddingWorkerPrivate::updateIndex(const QStringList &files)
 
     if (!embedRes) {
         embedder->embeddingClear();
-        return false;
+        return GET_INDEX_STATUS_CODE(INDEX_STATUS_DOCERROR);
     }
 
     bool updateRes = indexer->updateIndex(EmbeddingDim, embedder->getEmbedVectorCache());
     if (!updateRes) {
         embedder->embeddingClear();
-        return false;
+        return GET_INDEX_STATUS_CODE(INDEX_STATUS_DATAERROR);
     }
 
     if (m_saveAsDoc) {
@@ -125,7 +125,7 @@ bool EmbeddingWorkerPrivate::updateIndex(const QStringList &files)
     }
 
     indexUpdateTime = QDateTime::currentDateTimeUtc().toSecsSinceEpoch();
-    return updateRes;
+    return GET_INDEX_STATUS_CODE(INDEX_STATUS_SUCCESS);
 }
 
 bool EmbeddingWorkerPrivate::deleteIndex(const QStringList &files)
@@ -288,7 +288,6 @@ EmbeddingWorker::EmbeddingWorker(const QString &appid, QObject *parent)
 
     d->appID = appid;
     d->init();
-    d->indexCreateStatus = 0;
 
     moveToThread(&d->workThread);
     d->workThread.start();
@@ -341,9 +340,9 @@ void EmbeddingWorker::saveAllIndex()
     Q_EMIT stopEmbedding();
 }
 
-EmbeddingWorker::IndexCreateStatus EmbeddingWorker::createAllState()
+int EmbeddingWorker::createAllState()
 {
-    return  d->m_creatingAll ? Creating : Success;
+    return  d->m_creatingAll ? GET_INDEX_STATUS_CODE(INDEX_STATUS_CREATING) : GET_INDEX_STATUS_CODE(INDEX_STATUS_SUCCESS);
 }
 
 void EmbeddingWorker::setWatch(bool watch)
@@ -373,18 +372,10 @@ bool EmbeddingWorker::doCreateIndex(const QStringList &files)
         }
     }
 
-    d->indexCreateStatus = Creating;
-    bool ret = d->updateIndex(files);
-    if (!ret) {
-        Q_EMIT statusChanged(d->appID, files, Failed);
-        d->indexCreateStatus = Failed;
-        qWarning() << "Index update Failed";
-    } else {
-        Q_EMIT statusChanged(d->appID, files, Success);
-        d->indexCreateStatus = Success;
-    }
+    int ret = d->updateIndex(files);
+    Q_EMIT statusChanged(d->appID, files, ret);
 
-    return ret;
+    return true;
 }
 
 bool EmbeddingWorker::doDeleteIndex(const QStringList &files)

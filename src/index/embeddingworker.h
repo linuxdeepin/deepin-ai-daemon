@@ -7,6 +7,7 @@
 
 #include "vectorindex/embedding.h"
 #include "vectorindex/vectorindex.h"
+#include "global_define.h"
 
 #include <QObject>
 #include <QTimer>
@@ -23,13 +24,7 @@ public:
     void stop();
 
     void saveAllIndex();
-
-    enum IndexCreateStatus {
-        Failed = 0,
-        Success = 1,
-        Creating = 2
-    };
-    IndexCreateStatus createAllState();
+    int createAllState();
     void setWatch(bool watch);
     qint64 getIndexUpdateTime();
 public Q_SLOTS:

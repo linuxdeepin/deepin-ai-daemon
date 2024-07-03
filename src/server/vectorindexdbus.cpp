@@ -94,7 +94,7 @@ QString VectorIndexDBus::getAutoIndexStatus(const QString &appID)
 
     QVariantHash hash;
     hash.insert("enable", true);
-    int st = embeddingWorker->createAllState() == EmbeddingWorker::Creating ? 0 : 1;
+    int st = embeddingWorker->createAllState() == GET_INDEX_STATUS_CODE(INDEX_STATUS_CREATING) ? 0 : 1;
     hash.insert("completion", st);
 
     if (st == 1) {

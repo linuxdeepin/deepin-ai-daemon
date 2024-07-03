@@ -54,6 +54,13 @@ struct Document {
     virtual ~Document();
 };
 
+// 索引创建状态
+#define INDEX_STATUS_SUCCESS_CODE 1
+#define INDEX_STATUS_CREATING_CODE 2
+#define INDEX_STATUS_DOCERROR_CODE -1
+#define INDEX_STATUS_DATAERROR_CODE -2
+
+#define GET_INDEX_STATUS_CODE(status_info) (status_info##_CODE)
 #endif // GLOBAL_DEFINE_H
 
 
