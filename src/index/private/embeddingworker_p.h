@@ -36,7 +36,7 @@ public:
     }
     QStringList embeddingPaths();
 
-    bool updateIndex(const QStringList &files);
+    int updateIndex(const QStringList &files);
     bool deleteIndex(const QStringList &files);
     QString vectorSearch(const QString &query, int topK);
 
@@ -53,8 +53,6 @@ public:
     bool m_saveAsDoc = false;
 
     qint64 indexUpdateTime = 0;
-
-    int indexCreateStatus;
 
     QString appID;
     QThread workThread;
