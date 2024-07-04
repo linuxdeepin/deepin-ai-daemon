@@ -18,7 +18,7 @@ typedef QJsonObject EmbeddingJsonObject;
 static constexpr char kSystemAssistantKey[] { "SystemAssistant" };
 static constexpr char kGrandVectorSearch[] { "dde-grand-search" };
 static constexpr char kUosAIAssistant[] { "uos-ai-assistant" };
-static constexpr char kSystemAssistantData[] { "/usr/share/deepin-systemassistant-knowledge/deepin-knowledge/SystemAssistant" };
+static constexpr char kSystemAssistantData[] { "/usr/share/deepin-systemassistant-knowledge/SystemAssistant" };
 
 // DB
 static constexpr char kEmbeddingDBMetaDataTable[] { "embedding_metadata" };
