@@ -38,6 +38,8 @@ public Q_SLOTS:
 
     void saveAllIndex(const QString &appID);
 
+    void initBgeModel();
+
 signals:
     void IndexStatus(const QString &appID, const QStringList &files, int status);
     void IndexDeleted(const QString &appID, const QStringList &files);

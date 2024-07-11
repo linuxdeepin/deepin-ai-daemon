@@ -193,17 +193,23 @@ QJsonObject VectorIndexDBus::embeddingApi(const QStringList &texts, void *user)
     return {};
 }
 
-void VectorIndexDBus::init()
+void VectorIndexDBus::initBgeModel()
 {
-    if (ModelhubWrapper::isModelhubInstalled()) {
-        if (!ModelhubWrapper::isModelInstalled(dependModel()))
-            qWarning() << QString("VectorIndex needs model %0, but it is not avalilable").arg(dependModel());
-    } else {
-        qWarning() << "VectorIndex depends on deepin modehub, but it is not avalilable";
-    }
+    QTimer::singleShot(100, this, [](){
+        if (ModelhubWrapper::isModelhubInstalled()) {
+            if (!ModelhubWrapper::isModelInstalled(dependModel()))
+                qWarning() << QString("VectorIndex needs model %0, but it is not avalilable").arg(dependModel());
+        } else {
+            qWarning() << "VectorIndex depends on deepin modehub, but it is not avalilable";
+        }
+    });
 
     bgeModel = new ModelhubWrapper(dependModel(), this);
+}
 
+void VectorIndexDBus::init()
+{    
+    initBgeModel();
     for (const QString &app : m_whiteList) {
          bool on = ConfigManagerIns->value(AUTO_INDEX_GROUP, app + "." + AUTO_INDEX_STATUS, false).toBool();
          if (!on)
