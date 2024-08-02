@@ -2,8 +2,6 @@
 //
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-#ifdef ENABLE_OCR
-
 #include "imagepropertyparser.h"
 
 #include <DOcr>
@@ -45,5 +43,3 @@ QList<AbstractPropertyParser::Property> ImagePropertyParser::properties(const QS
 
     return propertyList;
 }
-
-#endif
