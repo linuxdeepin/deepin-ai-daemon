@@ -222,6 +222,11 @@ IndexWorker::IndexWorker(QObject *parent)
 {
 }
 
+void IndexWorker::start()
+{
+    d->isStoped = false;
+}
+
 void IndexWorker::stop()
 {
     d->isStoped = true;

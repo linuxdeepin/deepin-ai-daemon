@@ -13,6 +13,7 @@ class IndexWorker : public QObject
     Q_OBJECT
 public:
     explicit IndexWorker(QObject *parent = nullptr);
+    void start();
     void stop();
 
 public Q_SLOTS:

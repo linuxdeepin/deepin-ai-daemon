@@ -25,12 +25,18 @@ Q_SIGNALS:
     void fileAttributeChanged(const QString &file);
     void fileCreated(const QString &file);
     void fileDeleted(const QString &file);
+
+public slots:
+    void onSemanticAnalysisChecked(bool isChecked);
+
 private:
     void init();
 
 private:
     QSharedPointer<QThread> workThread { nullptr };
     QSharedPointer<IndexWorker> worker { nullptr };
+    volatile bool isServiceOn = false;
+    QMutex serviceOnMutex;
 };
 
 #endif   // INDEXMANAGER_H
