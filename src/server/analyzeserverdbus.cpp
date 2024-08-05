@@ -4,6 +4,7 @@
 
 #include "analyzeserverdbus.h"
 #include "modelhub/modelhubwrapper.h"
+#include "../index/indexmanager.h"
 
 #include <QProcess>
 #include <QDebug>
@@ -82,6 +83,10 @@ bool AnalyzeServerDBus::Enable()
     return out.contains("deepin-ai-models");
 }
 
+void AnalyzeServerDBus::SetSemanticOn(bool isTrue) {
+    emit semanticAnalysisChecked(isTrue, true);
+}
+
 void AnalyzeServerDBus::init()
 {
     worker = new AnalyzeWorker();
@@ -89,4 +94,6 @@ void AnalyzeServerDBus::init()
 
     connect(this, &AnalyzeServerDBus::addTask, worker, &AnalyzeWorker::onTaskAdded);
     workerThread.start();
+
+    connect(this, &AnalyzeServerDBus::semanticAnalysisChecked, IndexManager::instance(), &IndexManager::onSemanticAnalysisChecked);
 }

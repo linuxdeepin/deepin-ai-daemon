@@ -53,7 +53,7 @@ void FileMonitor::start(Priority p, int delayTime)
             return;
         }
 
-        emit indexManager->createAllIndex();
+        indexManager->onSemanticAnalysisChecked(ConfigManagerIns->value(SEMANTIC_ANALYSIS_GROUP, ENABLE_SEMANTIC_ANALYSIS, false).toBool(), false);
 
         if (!prepNlSock())
             return;

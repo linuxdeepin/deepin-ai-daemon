@@ -76,6 +76,10 @@ void ConfigManagerPrivate::update()
     set.endGroup();
 
     setValue(BLACKLIST_GROUP, BLACKLIST_PATHS, blacklist);
+
+    set.beginGroup(SEMANTIC_ANALYSIS_GROUP);
+    setValue(SEMANTIC_ANALYSIS_GROUP, ENABLE_SEMANTIC_ANALYSIS, set.value(ENABLE_SEMANTIC_ANALYSIS, false));
+    set.endGroup();
 }
 
 ConfigManager::ConfigManager(QObject *parent)
