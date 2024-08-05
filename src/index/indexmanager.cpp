@@ -56,10 +56,10 @@ void IndexManager::onSemanticAnalysisChecked(bool isChecked, bool isFromUser) {
     if (isChecked) {
         isSemanticOn = true;
         ConfigManagerIns->setValue(SEMANTIC_ANALYSIS_GROUP, ENABLE_SEMANTIC_ANALYSIS, isSemanticOn);
-        connect(this, &IndexManager::createAllIndex, worker.data(), &IndexWorker::onCreateAllIndex);
-        connect(this, &IndexManager::fileCreated, worker.data(), &IndexWorker::onFileCreated);
-        connect(this, &IndexManager::fileAttributeChanged, worker.data(), &IndexWorker::onFileAttributeChanged);
-        connect(this, &IndexManager::fileDeleted, worker.data(), &IndexWorker::onFileDeleted);
+        connect(this, &IndexManager::createAllIndex, worker.data(), &IndexWorker::onCreateAllIndex, Qt::UniqueConnection);
+        connect(this, &IndexManager::fileCreated, worker.data(), &IndexWorker::onFileCreated, Qt::UniqueConnection);
+        connect(this, &IndexManager::fileAttributeChanged, worker.data(), &IndexWorker::onFileAttributeChanged, Qt::UniqueConnection);
+        connect(this, &IndexManager::fileDeleted, worker.data(), &IndexWorker::onFileDeleted, Qt::UniqueConnection);
         worker->start();
         if (isFromUser) {
             lock.unlock();
