@@ -14,9 +14,9 @@ pkg_check_modules(Docparser REQUIRED IMPORTED_TARGET docparser)
 find_package(DtkWidget REQUIRED)
 find_package(DtkGui REQUIRED)
 find_package(DtkCMake REQUIRED)
-find_package(Qt5 COMPONENTS Widgets DBus Sql Network REQUIRED)
+find_package(Qt5 COMPONENTS Widgets DBus Sql REQUIRED)
 find_package(Boost REQUIRED COMPONENTS system)
-#find_package(dtkocr REQUIRED)
+find_package(dtkocr REQUIRED)
 
 FILE(GLOB_RECURSE SRC_FILES
     "${CMAKE_CURRENT_SOURCE_DIR}/*.h"
@@ -53,7 +53,6 @@ target_link_libraries(${PROJECT_NAME}
     Qt5::Gui
     Qt5::Widgets
     Qt5::Sql
-    Qt5::Network
     ${Boost_LIBRARIES}
     ${DtkWidget_LIBRARIES}
     ${DtkGUI_LIBRARIES}

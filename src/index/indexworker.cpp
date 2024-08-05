@@ -28,9 +28,7 @@ IndexWorkerPrivate::IndexWorkerPrivate(QObject *parent)
     : QObject(parent)
 {
     propertyParsers.insert("default", new AbstractPropertyParser(this));
-#ifdef ENABLE_OCR
     propertyParsers.insert("image/*", new ImagePropertyParser(this));
-#endif
     propertyParsers.insert("audio/*", new AudioPropertyParser(this));
     propertyParsers.insert("video/*", new VideoPropertyParser(this));
 }
@@ -220,6 +218,11 @@ IndexWorker::IndexWorker(QObject *parent)
     : QObject(parent),
       d(new IndexWorkerPrivate(this))
 {
+}
+
+void IndexWorker::start()
+{
+    d->isStoped = false;
 }
 
 void IndexWorker::stop()

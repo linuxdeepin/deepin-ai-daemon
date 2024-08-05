@@ -48,7 +48,7 @@ public:
 
     QMap<QString, AbstractPropertyParser *> propertyParsers;
     quint32 indexFileCount { 0 };
-    std::atomic_bool isStoped { false };
+    std::atomic_bool isStoped { true };
 };
 
 #endif   // INDEXWORKER_P_H

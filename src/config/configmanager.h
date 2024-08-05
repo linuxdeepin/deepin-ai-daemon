@@ -17,6 +17,9 @@
 #define AUTO_INDEX_GROUP "AutoIndex"
 #define AUTO_INDEX_STATUS "Status"
 
+#define SEMANTIC_ANALYSIS_GROUP "SemanticAnalysis"
+#define ENABLE_SEMANTIC_ANALYSIS "EnableSemanticAnalysis"
+
 #define ConfigManagerIns ConfigManager::instance()
 
 class ConfigManagerPrivate;

@@ -3,6 +3,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 #include "indexmanager.h"
+#include "../config/configmanager.h"
 
 #include <QDebug>
 
@@ -16,7 +17,7 @@ IndexManager::IndexManager(QObject *parent)
     Q_ASSERT(kIndexManager == nullptr);
     kIndexManager = this;
 
-    //init(); TODO:
+    init();
 }
 
 IndexManager::~IndexManager()
@@ -41,12 +42,37 @@ IndexManager *IndexManager::instance()
 
 void IndexManager::init()
 {
-    //connect(this, &IndexManager::createAllIndex, worker.data(), &IndexWorker::onCreateAllIndex);
-    connect(this, &IndexManager::fileCreated, worker.data(), &IndexWorker::onFileCreated);
-    connect(this, &IndexManager::fileAttributeChanged, worker.data(), &IndexWorker::onFileAttributeChanged);
-    connect(this, &IndexManager::fileDeleted, worker.data(), &IndexWorker::onFileDeleted);
-
     worker->moveToThread(workThread.data());
     workThread->start();
 }
 
+void IndexManager::onSemanticAnalysisChecked(bool isChecked, bool isFromUser) {
+    qInfo() << QString("onSemanticAnalysisChecked(%1 => %2) isFromUser(%3)").arg(isSemanticOn).arg(isChecked).arg(isFromUser);
+    QMutexLocker lock(&semanticOnMutex);
+    if (isSemanticOn == isChecked) {
+        return;
+    }
+
+    if (isChecked) {
+        isSemanticOn = true;
+        ConfigManagerIns->setValue(SEMANTIC_ANALYSIS_GROUP, ENABLE_SEMANTIC_ANALYSIS, isSemanticOn);
+        connect(this, &IndexManager::createAllIndex, worker.data(), &IndexWorker::onCreateAllIndex);
+        connect(this, &IndexManager::fileCreated, worker.data(), &IndexWorker::onFileCreated);
+        connect(this, &IndexManager::fileAttributeChanged, worker.data(), &IndexWorker::onFileAttributeChanged);
+        connect(this, &IndexManager::fileDeleted, worker.data(), &IndexWorker::onFileDeleted);
+        worker->start();
+        if (isFromUser) {
+            lock.unlock();
+            emit createAllIndex();
+        }
+        return;
+    }
+
+    worker->stop();
+    disconnect(this, &IndexManager::createAllIndex, worker.data(), &IndexWorker::onCreateAllIndex);
+    disconnect(this, &IndexManager::fileCreated, worker.data(), &IndexWorker::onFileCreated);
+    disconnect(this, &IndexManager::fileAttributeChanged, worker.data(), &IndexWorker::onFileAttributeChanged);
+    disconnect(this, &IndexManager::fileDeleted, worker.data(), &IndexWorker::onFileDeleted);
+    isSemanticOn = false;
+    ConfigManagerIns->setValue(SEMANTIC_ANALYSIS_GROUP, ENABLE_SEMANTIC_ANALYSIS, isSemanticOn);
+}
