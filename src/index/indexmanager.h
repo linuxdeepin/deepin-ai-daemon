@@ -35,8 +35,8 @@ private:
 private:
     QSharedPointer<QThread> workThread { nullptr };
     QSharedPointer<IndexWorker> worker { nullptr };
-    volatile bool isServiceOn = false;
-    QMutex serviceOnMutex;
+    volatile bool isSemanticOn = false;
+    QMutex semanticOnMutex;
 };
 
 #endif   // INDEXMANAGER_H

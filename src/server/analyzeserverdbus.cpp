@@ -78,16 +78,12 @@ QString AnalyzeServerDBus::Analyze(const QString &content)
 
 bool AnalyzeServerDBus::Enable()
 {
-    if (true) {
-        return true;
-    }
-
     QString out;
     ModelhubWrapper::openCmd("which deepin-ai-models", out);
     return out.contains("deepin-ai-models");
 }
 
-void AnalyzeServerDBus::ServiceOn(bool isTrue) {
+void AnalyzeServerDBus::SetSemanticOn(bool isTrue) {
     emit semanticAnalysisChecked(isTrue);
 }
 

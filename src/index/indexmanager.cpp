@@ -3,6 +3,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 #include "indexmanager.h"
+#include "../config/configmanager.h"
 
 #include <QDebug>
 
@@ -46,14 +47,15 @@ void IndexManager::init()
 }
 
 void IndexManager::onSemanticAnalysisChecked(bool isChecked) {
-    qInfo() << QString("onSemanticAnalysisChecked(%1 => %2)").arg(isServiceOn).arg(isChecked);
-    QMutexLocker lock(&serviceOnMutex);
-    if (isServiceOn == isChecked) {
+    qInfo() << QString("onSemanticAnalysisChecked(%1 => %2)").arg(isSemanticOn).arg(isChecked);
+    QMutexLocker lock(&semanticOnMutex);
+    if (isSemanticOn == isChecked) {
         return;
     }
 
     if (isChecked) {
-        isServiceOn = true;
+        isSemanticOn = true;
+        ConfigManagerIns->setValue(SEMANTIC_ANALYSIS_GROUP, ENABLE_SEMANTIC_ANALYSIS, isSemanticOn);
         connect(this, &IndexManager::createAllIndex, worker.data(), &IndexWorker::onCreateAllIndex);
         connect(this, &IndexManager::fileCreated, worker.data(), &IndexWorker::onFileCreated);
         connect(this, &IndexManager::fileAttributeChanged, worker.data(), &IndexWorker::onFileAttributeChanged);
@@ -68,5 +70,6 @@ void IndexManager::onSemanticAnalysisChecked(bool isChecked) {
     disconnect(this, &IndexManager::fileCreated, worker.data(), &IndexWorker::onFileCreated);
     disconnect(this, &IndexManager::fileAttributeChanged, worker.data(), &IndexWorker::onFileAttributeChanged);
     disconnect(this, &IndexManager::fileDeleted, worker.data(), &IndexWorker::onFileDeleted);
-    isServiceOn = false;
+    isSemanticOn = false;
+    ConfigManagerIns->setValue(SEMANTIC_ANALYSIS_GROUP, ENABLE_SEMANTIC_ANALYSIS, isSemanticOn);
 }

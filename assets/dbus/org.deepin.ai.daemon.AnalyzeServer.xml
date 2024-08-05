@@ -8,7 +8,7 @@
     <method name="Enable">
       <arg type="b" direction="out"/>
     </method>
-    <method name="ServiceOn">
+    <method name="SetSemanticOn">
       <arg name="isTrue" type="b" direction="in"/>
     </method>
   </interface>

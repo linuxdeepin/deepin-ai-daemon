@@ -37,7 +37,7 @@ public:
 public Q_SLOTS:
     QString Analyze(const QString &content);
     bool Enable();
-    void ServiceOn(bool isTrue);
+    void SetSemanticOn(bool isTrue);
 
 Q_SIGNALS:
     void addTask(const QString &content, QDBusMessage reply, QPrivateSignal);

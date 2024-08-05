@@ -128,6 +128,14 @@ ConfigManager *ConfigManager::instance()
 
 QVariant ConfigManager::value(const QString &group, const QString &key, const QVariant &defaultValue) const
 {
+    if (group == SEMANTIC_ANALYSIS_GROUP) {
+        QSettings set(d->configPath, QSettings::IniFormat);
+        set.beginGroup(group);
+        QVariant value = set.value(key, defaultValue);
+        set.endGroup();
+        return value;
+    }
+
     return d->value(group, key, defaultValue);
 }
 
