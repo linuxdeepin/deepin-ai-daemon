@@ -1,3 +1,9 @@
+deepin-ai-daemon (1.1.1) unstable; urgency=medium
+
+  * Pre-release for deepin-ai-daemon 1.1.1
+
+ -- zhuangyu <zhangyub@uniontech.com>  Wed, 7 Aug 2024 21:12:10 +0800
+ 
 deepin-ai-daemon (1.0) unstable; urgency=medium
 
   * Pre-release for deepin-ai-daemon 1.0
