@@ -28,7 +28,7 @@ QList<AbstractPropertyParser::Property> AbstractPropertyParser::properties(const
     propertyList.append({ "created", formatTime(fileInfo.created()), false });
     propertyList.append({ "lastRead", formatTime(fileInfo.lastRead()), false });
     propertyList.append({ "lastModified", formatTime(fileInfo.lastModified()), false });
-    propertyList.append({ "fileType", fileInfo.suffix(), false });
+    propertyList.append({ "fileType", fileInfo.suffix(), true }); //搜索时fileType的内容会被分词，导致mp3被拆分。因此这里也需要进行分词
 
     return propertyList;
 }
