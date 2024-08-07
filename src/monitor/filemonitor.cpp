@@ -47,7 +47,7 @@ FileMonitor::~FileMonitor()
 
 void FileMonitor::start(Priority p, int delayTime)
 {
-    QTimer::singleShot(delayTime * 1000, this, [&] {
+    QTimer::singleShot(delayTime * 1000, this, [&, p] {
         if (!isInited) {
             qWarning() << "FileMonitor is not init success";
             return;
